@@ -1,0 +1,12 @@
+In this code:
+
+initialize_grid initializes a random grid of a given size (rows x cols).
+update_grid updates the grid based on the Game of Life rules:
+Any live cell with fewer than two live neighbors dies (underpopulation).
+Any live cell with two or three live neighbors lives on to the next generation.
+Any live cell with more than three live neighbors dies (overpopulation).
+Any dead cell with exactly three live neighbors becomes a live cell (reproduction).
+animate_game_of_life animates the Game of Life using matplotlib.animation.
+To run this code, you'll need to install numpy and matplotlib:
+
+pip install numpy matplotlib

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reddit Clone</title>
+</head>
+<body>
+    <h1>Welcome to Reddit Clone</h1>
+
+    <h2>Posts</h2>
+    <ul>
+        {% for post in posts %}
+            <li>
+                <h3>{{ post.title }}</h3>
+                <p>{{ post.content }}</p>
+                <p>Posted by: {{ post.user.username }}</p>
+                <a href="{{ url_for('view_post', post_id=post.id) }}">View Post</a>
+            </li>
+        {% endfor %}
+    </ul>
+
+    {% if current_user.is_authenticated %}
+        <a href="{{ url_for('submit') }}">Submit a Post</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    {% else %}
+        <a href="{{ url_for('login') }}">Login</a>
+        <a href="{{ url_for('register') }}">Register</a>
+    {% endif %}
+</body>
+</html>

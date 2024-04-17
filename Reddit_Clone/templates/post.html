@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Post</title>
+</head>
+<body>
+    <h1>{{ post.title }}</h1>
+
+    <p>{{ post.content }}</p>
+    <p>Posted by: {{ post.user.username }}</p>
+
+    <h2>Comments</h2>
+    <ul>
+        {% for comment in post.comments %}
+            <li>
+                <p>{{ comment.text }}</p>
+                <p>Comment by: {{ comment.user.username }}</p>
+            </li>
+        {% endfor %}
+    </ul>
+
+    {% if current_user.is_authenticated %}
+        <h3>Add Comment</h3>
+        <form action="{{ url_for('view_post', post_id=post.id) }}" method="post">
+            <div>
+                <label for="text">Comment:</label>
+                <textarea id="text" name="text" rows="4" required></textarea>
+            </div>
+            <div>
+                <input type="submit" value="Add Comment">
+            </div>
+        </form>
+    {% else %}
+        <p>Please <a href="{{ url_for('login') }}">login</a> to add comments.</p>
+    {% endif %}
+
+    <a href="{{ url_for('index') }}">Back to Posts</a>
+</body>
+</html>
