@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Home Automation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Smart Home Automation</h1>
+    <h2>Devices</h2>
+    <ul>
+        {% for device in devices %}
+        <li>{{ device.name }} - {{ device.device_type }}</li>
+        {% endfor %}
+    </ul>
+    <h3>Add Device</h3>
+    <form action="/add_device" method="POST">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+        <label for="device_type">Type:</label>
+        <select id="device_type" name="device_type" required>
+            <option value="Light">Light</option>
+            <option value="Thermostat">Thermostat</option>
+            <option value="Camera">Camera</option>
+        </select>
+        <button type="submit">Add Device</button>
+    </form>
+    <a href="/schedule">Manage Schedules</a>
+</body>
+</html>
