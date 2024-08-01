@@ -1,0 +1,16 @@
+
+
+def calculate_skill_points():
+    print("Welcome to the Skill Point Calculator!")
+    
+    # Get user input
+    game_points = int(input("Enter your game points: "))
+    trivia_badges = int(input("Enter your trivia badges: "))
+    skill_badges = int(input("Enter your skill badges: "))
+
+    # Calculate skill points
+    total_skill_points = game_points + trivia_badges + (skill_badges // 2)
+
+    print(f"Your total skill points are: {total_skill_points}")
+
+calculate_skill_points()
