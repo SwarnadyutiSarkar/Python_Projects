@@ -1,0 +1,53 @@
+import os
+import shutil
+import tkinter as tk
+from tkinter import messagebox, filedialog
+
+class DesktopCleanerApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Desktop Cleaner")
+        
+        self.label = tk.Label(root, text="Choose a directory to clean up:")
+        self.label.pack(pady=10)
+        
+        self.directory_button = tk.Button(root, text="Select Desktop Directory", command=self.select_directory)
+        self.directory_button.pack(pady=5)
+        
+        self.clean_button = tk.Button(root, text="Clean Up Desktop", command=self.clean_up, state=tk.DISABLED)
+        self.clean_button.pack(pady=10)
+        
+        self.selected_directory = None
+    
+    def select_directory(self):
+        self.selected_directory = filedialog.askdirectory(title="Select Desktop Directory")
+        if self.selected_directory:
+            self.clean_button.config(state=tk.NORMAL)
+            messagebox.showinfo("Directory Selected", f"Selected directory: {self.selected_directory}")
+        else:
+            self.clean_button.config(state=tk.DISABLED)
+    
+    def clean_up(self):
+        if not self.selected_directory:
+            messagebox.showwarning("No Directory Selected", "Please select a directory first.")
+            return
+        
+        desktop_path = self.selected_directory
+        trash_folder = os.path.join(desktop_path, "Trash")
+        
+        # Create Trash folder if it doesn't exist
+        if not os.path.exists(trash_folder):
+            os.makedirs(trash_folder)
+        
+        # Move files to Trash folder
+        for item in os.listdir(desktop_path):
+            item_path = os.path.join(desktop_path, item)
+            if os.path.isfile(item_path) or os.path.isdir(item_path):
+                shutil.move(item_path, trash_folder)
+        
+        messagebox.showinfo("Clean Up Complete", "All items have been moved to the Trash folder.")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = DesktopCleanerApp(root)
+    root.mainloop()
