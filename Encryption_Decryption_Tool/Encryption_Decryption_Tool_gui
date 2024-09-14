@@ -1,0 +1,87 @@
+import tkinter as tk
+from tkinter import messagebox, filedialog
+from cryptography.fernet import Fernet
+
+# Generate and save the key
+def generate_key():
+    key = Fernet.generate_key()
+    with open("secret.key", "wb") as key_file:
+        key_file.write(key)
+    return key
+
+# Load the key from file
+def load_key():
+    return open("secret.key", "rb").read()
+
+class EncryptionDecryptionApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Encryption and Decryption Tool")
+        
+        self.key = None
+        if not self.key_exists():
+            self.key = generate_key()
+        else:
+            self.key = load_key()
+        
+        self.cipher = Fernet(self.key)
+        
+        # Create and pack GUI elements
+        self.create_widgets()
+    
+    def key_exists(self):
+        return os.path.exists("secret.key")
+    
+    def create_widgets(self):
+        # Encryption
+        self.encrypt_label = tk.Label(self.root, text="Encrypt File")
+        self.encrypt_label.pack(pady=5)
+        
+        self.encrypt_button = tk.Button(self.root, text="Choose File to Encrypt", command=self.encrypt_file)
+        self.encrypt_button.pack(pady=5)
+        
+        self.encrypt_status = tk.Label(self.root, text="")
+        self.encrypt_status.pack(pady=5)
+        
+        # Decryption
+        self.decrypt_label = tk.Label(self.root, text="Decrypt File")
+        self.decrypt_label.pack(pady=5)
+        
+        self.decrypt_button = tk.Button(self.root, text="Choose File to Decrypt", command=self.decrypt_file)
+        self.decrypt_button.pack(pady=5)
+        
+        self.decrypt_status = tk.Label(self.root, text="")
+        self.decrypt_status.pack(pady=5)
+    
+    def encrypt_file(self):
+        file_path = filedialog.askopenfilename(title="Select a File to Encrypt")
+        if file_path:
+            try:
+                with open(file_path, "rb") as file:
+                    file_data = file.read()
+                encrypted_data = self.cipher.encrypt(file_data)
+                encrypted_file_path = file_path + ".enc"
+                with open(encrypted_file_path, "wb") as file:
+                    file.write(encrypted_data)
+                self.encrypt_status.config(text=f"File encrypted and saved as {encrypted_file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred during encryption: {e}")
+    
+    def decrypt_file(self):
+        file_path = filedialog.askopenfilename(title="Select a File to Decrypt")
+        if file_path:
+            try:
+                with open(file_path, "rb") as file:
+                    encrypted_data = file.read()
+                decrypted_data = self.cipher.decrypt(encrypted_data)
+                decrypted_file_path = file_path.rsplit('.enc', 1)[0]
+                with open(decrypted_file_path, "wb") as file:
+                    file.write(decrypted_data)
+                self.decrypt_status.config(text=f"File decrypted and saved as {decrypted_file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred during decryption: {e}")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = EncryptionDecryptionApp(root)
+    root.mainloop()
