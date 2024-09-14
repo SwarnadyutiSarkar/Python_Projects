@@ -1,0 +1,79 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import pygame
+import os
+
+class MusicPlayerApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Music Player")
+        
+        self.is_playing = False
+        
+        # Initialize Pygame mixer
+        pygame.mixer.init()
+        
+        # Create and pack GUI elements
+        self.create_widgets()
+    
+    def create_widgets(self):
+        # Play Button
+        self.play_button = tk.Button(self.root, text="Play", command=self.play_music)
+        self.play_button.pack(pady=10)
+        
+        # Pause Button
+        self.pause_button = tk.Button(self.root, text="Pause", command=self.pause_music)
+        self.pause_button.pack(pady=10)
+        
+        # Stop Button
+        self.stop_button = tk.Button(self.root, text="Stop", command=self.stop_music)
+        self.stop_button.pack(pady=10)
+        
+        # Open File Button
+        self.open_button = tk.Button(self.root, text="Open File", command=self.open_file)
+        self.open_button.pack(pady=10)
+        
+        # Volume Control
+        self.volume_label = tk.Label(self.root, text="Volume")
+        self.volume_label.pack(pady=5)
+        
+        self.volume_scale = tk.Scale(self.root, from_=0, to_=100, orient=tk.HORIZONTAL, command=self.set_volume)
+        self.volume_scale.set(50)  # Default volume
+        self.volume_scale.pack(pady=10)
+        
+        # Track Info
+        self.track_info = tk.Label(self.root, text="No track loaded")
+        self.track_info.pack(pady=10)
+    
+    def open_file(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Audio Files", "*.mp3;*.wav")])
+        if file_path:
+            self.current_track = file_path
+            self.track_info.config(text=f"Loaded: {os.path.basename(file_path)}")
+        else:
+            self.track_info.config(text="No track loaded")
+
+    def play_music(self):
+        if hasattr(self, 'current_track') and self.current_track:
+            pygame.mixer.music.load(self.current_track)
+            pygame.mixer.music.play()
+            self.is_playing = True
+        else:
+            messagebox.showwarning("No Track", "Please load a track first.")
+
+    def pause_music(self):
+        if self.is_playing:
+            pygame.mixer.music.pause()
+            self.is_playing = False
+
+    def stop_music(self):
+        pygame.mixer.music.stop()
+        self.is_playing = False
+
+    def set_volume(self, volume):
+        pygame.mixer.music.set_volume(int(volume) / 100.0)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = MusicPlayerApp(root)
+    root.mainloop()
