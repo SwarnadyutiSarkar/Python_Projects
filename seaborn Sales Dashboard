@@ -1,0 +1,53 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from tkinter import *
+from tkinter import filedialog
+
+def sales_dashboard(df):
+    dashboard_window = Toplevel()
+    dashboard_window.title("Sales Dashboard")
+
+    # Sales by Category Bar Plot
+    category_counts = df['Category'].value_counts()
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=category_counts.index, y=category_counts.values)
+    plt.title('Sales by Category')
+    plt.xlabel('Category')
+    plt.ylabel('Number of Sales')
+    plt.show()
+
+    # Sales Trends Line Plot
+    df['Date'] = pd.to_datetime(df['Date'])
+    sales_trends = df.groupby(df['Date'].dt.to_period('M')).sum()['Sales']
+    plt.figure(figsize=(10, 6))
+    sales_trends.plot(kind='line')
+    plt.title('Sales Trends Over Time')
+    plt.xlabel('Date')
+    plt.ylabel('Sales')
+    plt.show()
+
+    # Sales Distribution Box Plot
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(y=df['Sales'])
+    plt.title('Sales Distribution')
+    plt.show()
+
+def load_sales_data():
+    file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+    if file_path:
+        if file_path.endswith('.csv'):
+            df = pd.read_csv(file_path)
+        else:
+            df = pd.read_excel(file_path)
+
+        sales_dashboard(df)
+
+def main_app():
+    root = Tk()
+    root.title("Sales Dashboard")
+    Button(root, text="Load Sales Dataset", command=load_sales_data).pack(pady=10)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main_app()
