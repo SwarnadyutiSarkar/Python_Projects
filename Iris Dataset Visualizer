@@ -1,0 +1,31 @@
+import seaborn as sns
+import matplotlib.pyplot as plt
+from tkinter import *
+
+def plot_distribution(df, column):
+    plt.figure(figsize=(10, 6))
+    sns.histplot(df[column], bins=30, kde=True)
+    plt.title(f'Distribution of {column}')
+    plt.show()
+
+def iris_visualizer():
+    iris = sns.load_dataset('iris')
+    iris_window = Toplevel()
+    iris_window.title("Iris Dataset Visualizer")
+
+    features = iris.columns[:-1].tolist()
+    feature_var = StringVar(iris_window)
+    feature_var.set(features[0])  # Set default value
+
+    OptionMenu(iris_window, feature_var, *features).pack(pady=5)
+    Button(iris_window, text="Show Histogram", command=lambda: plot_distribution(iris, feature_var.get())).pack(pady=5)
+    Button(iris_window, text="Show Scatter Plot", command=lambda: sns.scatterplot(data=iris, x=features[0], y=features[1], hue='species')).pack(pady=5)
+
+def main_app():
+    root = Tk()
+    root.title("Iris Dataset Visualizer")
+    Button(root, text="Open Iris Visualizer", command=iris_visualizer).pack(pady=10)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main_app()
