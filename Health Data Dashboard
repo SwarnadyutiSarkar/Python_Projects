@@ -1,0 +1,71 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from tkinter import Tk, Button, Label, filedialog
+import os
+
+class HealthDataDashboard:
+    def __init__(self, master):
+        self.master = master
+        master.title("Health Data Dashboard")
+
+        self.label = Label(master, text="Upload your health data CSV file:")
+        self.label.pack()
+
+        self.upload_button = Button(master, text="Upload CSV", command=self.upload_file)
+        self.upload_button.pack()
+
+        self.visualize_button = Button(master, text="Visualize Data", command=self.visualize_data)
+        self.visualize_button.pack()
+        self.visualize_button.config(state="disabled")  # Disable until a file is uploaded
+
+        self.file_path = None
+
+    def upload_file(self):
+        self.file_path = filedialog.askopenfilename(
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
+        if self.file_path:
+            self.label.config(text=os.path.basename(self.file_path))
+            self.visualize_button.config(state="normal")
+
+    def visualize_data(self):
+        # Read the CSV file
+        data = pd.read_csv(self.file_path)
+
+        # Check necessary columns
+        required_columns = ['Age', 'Height', 'Weight', 'ExerciseHours', 'Smoker', 'Drinker', 'BMI']
+        for column in required_columns:
+            if column not in data.columns:
+                self.label.config(text=f"Error: Missing column {column}.")
+                return
+
+        # BMI Distribution
+        plt.figure(figsize=(10, 5))
+        sns.histplot(data['BMI'], bins=20, kde=True)
+        plt.title('BMI Distribution')
+        plt.xlabel('BMI')
+        plt.ylabel('Frequency')
+        plt.tight_layout()
+        plt.show()
+
+        # Age-related trends: Age vs. BMI
+        plt.figure(figsize=(10, 5))
+        sns.scatterplot(data=data, x='Age', y='BMI', hue='Smoker', style='Drinker')
+        plt.title('Age vs. BMI')
+        plt.xlabel('Age')
+        plt.ylabel('BMI')
+        plt.tight_layout()
+        plt.show()
+
+        # Correlation heatmap
+        plt.figure(figsize=(10, 5))
+        correlation_matrix = data.corr()
+        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f')
+        plt.title('Correlation between Lifestyle Factors and Health Metrics')
+        plt.tight_layout()
+        plt.show()
+
+if __name__ == "__main__":
+    root = Tk()
+    app = HealthDataDashboard(root)
+    root.mainloop()
