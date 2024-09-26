@@ -1,0 +1,81 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from tkinter import Tk, Button, Label, filedialog
+import os
+
+class EcommerceAnalyticsTool:
+    def __init__(self, master):
+        self.master = master
+        master.title("E-commerce Analytics Tool")
+
+        self.label = Label(master, text="Upload your e-commerce data CSV file:")
+        self.label.pack()
+
+        self.upload_button = Button(master, text="Upload CSV", command=self.upload_file)
+        self.upload_button.pack()
+
+        self.visualize_button = Button(master, text="Visualize Data", command=self.visualize_data)
+        self.visualize_button.pack()
+        self.visualize_button.config(state="disabled")  # Disable until a file is uploaded
+
+        self.file_path = None
+
+    def upload_file(self):
+        self.file_path = filedialog.askopenfilename(
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
+        if self.file_path:
+            self.label.config(text=os.path.basename(self.file_path))
+            self.visualize_button.config(state="normal")
+
+    def visualize_data(self):
+        # Read the CSV file
+        data = pd.read_csv(self.file_path)
+
+        # Check necessary columns
+        required_columns = ['Date', 'Users', 'Purchases', 'Revenue']
+        for column in required_columns:
+            if column not in data.columns:
+                self.label.config(text=f"Error: Missing column {column}.")
+                return
+
+        # Convert Date column to datetime
+        data['Date'] = pd.to_datetime(data['Date'])
+
+        # User behavior: Line plot of users over time
+        plt.figure(figsize=(10, 5))
+        sns.lineplot(data=data, x='Date', y='Users', marker='o')
+        plt.title('User Growth Over Time')
+        plt.xlabel('Date')
+        plt.ylabel('Number of Users')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+        # Purchase patterns: Bar plot of purchases
+        plt.figure(figsize=(10, 5))
+        sns.barplot(data=data, x='Date', y='Purchases', palette='viridis')
+        plt.title('Purchases Over Time')
+        plt.xlabel('Date')
+        plt.ylabel('Number of Purchases')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+        # Conversion Rate Calculation
+        data['ConversionRate'] = data['Purchases'] / data['Users'] * 100
+
+        # Conversion Rate: Line plot
+        plt.figure(figsize=(10, 5))
+        sns.lineplot(data=data, x='Date', y='ConversionRate', marker='o', color='orange')
+        plt.title('Conversion Rate Over Time')
+        plt.xlabel('Date')
+        plt.ylabel('Conversion Rate (%)')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+if __name__ == "__main__":
+    root = Tk()
+    app = EcommerceAnalyticsTool(root)
+    root.mainloop()
