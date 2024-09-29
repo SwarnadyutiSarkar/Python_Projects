@@ -1,0 +1,76 @@
+import hashlib
+import json
+import time
+from typing import List, Dict
+
+class Block:
+    def __init__(self, index: int, previous_hash: str, timestamp: float, data: str, hash: str):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.timestamp = timestamp
+        self.data = data
+        self.hash = hash
+
+class Blockchain:
+    def __init__(self):
+        self.chain: List[Block] = []
+        self.create_block(previous_hash='0')  # Create the genesis block
+
+    def create_block(self, data: str = '') -> Block:
+        index = len(self.chain) + 1
+        previous_hash = self.chain[-1].hash if self.chain else '0'
+        timestamp = time.time()
+        hash = self.hash_block(index, previous_hash, timestamp, data)
+        new_block = Block(index, previous_hash, timestamp, data, hash)
+        self.chain.append(new_block)
+        return new_block
+
+    def hash_block(self, index: int, previous_hash: str, timestamp: float, data: str) -> str:
+        value = f"{index}{previous_hash}{timestamp}{data}".encode()
+        return hashlib.sha256(value).hexdigest()
+
+    def get_chain(self) -> List[Block]:
+        return self.chain
+
+    def add_product(self, product_data: Dict) -> None:
+        product_json = json.dumps(product_data, sort_keys=True)
+        self.create_block(data=product_json)
+
+# Example usage
+if __name__ == "__main__":
+    blockchain = Blockchain()
+
+    # Add products to the supply chain
+    product_1 = {
+        "product_id": "P001",
+        "name": "Laptop",
+        "origin": "Factory A",
+        "timestamp": time.time(),
+        "status": "Manufactured"
+    }
+
+    blockchain.add_product(product_1)
+
+    product_2 = {
+        "product_id": "P001",
+        "name": "Laptop",
+        "origin": "Factory A",
+        "timestamp": time.time(),
+        "status": "Shipped"
+    }
+
+    blockchain.add_product(product_2)
+
+    product_3 = {
+        "product_id": "P001",
+        "name": "Laptop",
+        "origin": "Factory A",
+        "timestamp": time.time(),
+        "status": "Delivered"
+    }
+
+    blockchain.add_product(product_3)
+
+    # Print the supply chain
+    for block in blockchain.get_chain():
+        print(f"Index: {block.index}, Hash: {block.hash}, Data: {block.data}")
