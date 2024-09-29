@@ -1,0 +1,66 @@
+import hashlib
+import json
+import time
+from typing import List, Dict
+
+class Block:
+    def __init__(self, index: int, previous_hash: str, timestamp: float, data: str, hash: str):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.timestamp = timestamp
+        self.data = data
+        self.hash = hash
+
+class Blockchain:
+    def __init__(self):
+        self.chain: List[Block] = []
+        self.votes: Dict[str, int] = {}  # Store vote counts
+        self.create_block(previous_hash='0')  # Create the genesis block
+
+    def create_block(self, data: str = '') -> Block:
+        index = len(self.chain) + 1
+        previous_hash = self.chain[-1].hash if self.chain else '0'
+        timestamp = time.time()
+        hash = self.hash_block(index, previous_hash, timestamp, data)
+        new_block = Block(index, previous_hash, timestamp, data, hash)
+        self.chain.append(new_block)
+        return new_block
+
+    def hash_block(self, index: int, previous_hash: str, timestamp: float, data: str) -> str:
+        value = f"{index}{previous_hash}{timestamp}{data}".encode()
+        return hashlib.sha256(value).hexdigest()
+
+    def cast_vote(self, candidate: str) -> None:
+        if candidate not in self.votes:
+            self.votes[candidate] = 0
+        self.votes[candidate] += 1
+        self.create_block(data=json.dumps({candidate: self.votes[candidate]}))
+
+    def get_results(self) -> Dict[str, int]:
+        return self.votes
+
+    def get_chain(self) -> List[Block]:
+        return self.chain
+
+# Example usage
+if __name__ == "__main__":
+    blockchain = Blockchain()
+
+    # Simulate casting votes
+    blockchain.cast_vote("Alice")
+    blockchain.cast_vote("Bob")
+    blockchain.cast_vote("Alice")
+    blockchain.cast_vote("Charlie")
+    blockchain.cast_vote("Alice")
+    blockchain.cast_vote("Bob")
+
+    # Print voting results
+    results = blockchain.get_results()
+    print("Voting Results:")
+    for candidate, votes in results.items():
+        print(f"{candidate}: {votes} votes")
+
+    # Print the blockchain
+    print("\nBlockchain:")
+    for block in blockchain.get_chain():
+        print(f"Index: {block.index}, Hash: {block.hash}, Data: {block.data}")
