@@ -1,0 +1,65 @@
+import hashlib
+import json
+import time
+from typing import List, Dict
+
+class Block:
+    def __init__(self, index: int, previous_hash: str, timestamp: float, data: str, hash: str):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.timestamp = timestamp
+        self.data = data
+        self.hash = hash
+
+class Blockchain:
+    def __init__(self):
+        self.chain: List[Block] = []
+        self.create_block(previous_hash='0')  # Create the genesis block
+
+    def create_block(self, data: str = '') -> Block:
+        index = len(self.chain) + 1
+        previous_hash = self.chain[-1].hash if self.chain else '0'
+        timestamp = time.time()
+        hash = self.hash_block(index, previous_hash, timestamp, data)
+        new_block = Block(index, previous_hash, timestamp, data, hash)
+        self.chain.append(new_block)
+        return new_block
+
+    def hash_block(self, index: int, previous_hash: str, timestamp: float, data: str) -> str:
+        value = f"{index}{previous_hash}{timestamp}{data}".encode()
+        return hashlib.sha256(value).hexdigest()
+
+    def get_chain(self) -> List[Block]:
+        return self.chain
+
+    def verify_identity(self, identity_data: Dict) -> str:
+        identity_json = json.dumps(identity_data, sort_keys=True)
+        return self.hash_block(len(self.chain) + 1, self.chain[-1].hash, time.time(), identity_json)
+
+# Example usage
+if __name__ == "__main__":
+    blockchain = Blockchain()
+
+    # Identity data (for demonstration)
+    identity_1 = {
+        "name": "Alice",
+        "email": "alice@example.com",
+        "dob": "1990-01-01"
+    }
+
+    # Verify identity and create a block
+    identity_hash = blockchain.verify_identity(identity_1)
+    blockchain.create_block(data=identity_hash)
+
+    # Add another identity
+    identity_2 = {
+        "name": "Bob",
+        "email": "bob@example.com",
+        "dob": "1992-02-02"
+    }
+    identity_hash_2 = blockchain.verify_identity(identity_2)
+    blockchain.create_block(data=identity_hash_2)
+
+    # Print the blockchain
+    for block in blockchain.get_chain():
+        print(f"Index: {block.index}, Hash: {block.hash}, Data: {block.data}")
