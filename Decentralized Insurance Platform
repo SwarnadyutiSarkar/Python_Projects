@@ -1,0 +1,88 @@
+import hashlib
+import json
+from time import time
+from flask import Flask, request, jsonify
+
+class Block:
+    def __init__(self, index, previous_hash, timestamp, data, hash):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.timestamp = timestamp
+        self.data = data
+        self.hash = hash
+
+    def to_dict(self):
+        return {
+            'index': self.index,
+            'previous_hash': self.previous_hash,
+            'timestamp': self.timestamp,
+            'data': self.data,
+            'hash': self.hash
+        }
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.current_policies = []
+        self.create_block(previous_hash='1')  # Create the genesis block
+
+    def create_block(self, previous_hash):
+        block = Block(
+            index=len(self.chain) + 1,
+            previous_hash=previous_hash,
+            timestamp=time(),
+            data=self.current_policies,
+            hash=self.hash_block(previous_hash)
+        )
+        self.current_policies = []  # Reset current policies
+        self.chain.append(block)
+        return block
+
+    def hash_block(self, previous_hash):
+        block_string = json.dumps(self.current_policies, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+    def add_policy(self, policy_holder, policy_type, coverage_amount):
+        self.current_policies.append({
+            'policy_holder': policy_holder,
+            'policy_type': policy_type,
+            'coverage_amount': coverage_amount
+        })
+        return self.create_block(previous_hash=self.chain[-1].hash)
+
+    def get_chain(self):
+        return [block.to_dict() for block in self.chain]
+
+app = Flask(__name__)
+blockchain = Blockchain()
+
+@app.route('/add_policy', methods=['POST'])
+def add_policy():
+    data = request.get_json()
+    policy_holder = data.get('policy_holder')
+    policy_type = data.get('policy_type')
+    coverage_amount = data.get('coverage_amount')
+
+    if not policy_holder or not policy_type or not coverage_amount:
+        return jsonify({'error': 'Policy holder, type, and coverage amount are required'}), 400
+
+    block = blockchain.add_policy(policy_holder, policy_type, coverage_amount)
+    return jsonify({
+        'message': 'Policy added',
+        'block': block.to_dict()
+    }), 201
+
+@app.route('/chain', methods=['GET'])
+def get_chain():
+    return jsonify(blockchain.get_chain()), 200
+
+@app.route('/policy/<int:index>', methods=['GET'])
+def get_policy(index):
+    if index < 1 or index > len(blockchain.chain):
+        return jsonify({'error': 'Policy not found'}), 404
+
+    block = blockchain.chain[index - 1]
+    return jsonify(block.to_dict()), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
