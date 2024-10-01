@@ -1,0 +1,88 @@
+import hashlib
+import json
+from time import time
+from flask import Flask, request, jsonify
+
+class Block:
+    def __init__(self, index, previous_hash, timestamp, data, hash):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.timestamp = timestamp
+        self.data = data
+        self.hash = hash
+
+    def to_dict(self):
+        return {
+            'index': self.index,
+            'previous_hash': self.previous_hash,
+            'timestamp': self.timestamp,
+            'data': self.data,
+            'hash': self.hash
+        }
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.current_tracks = []
+        self.create_block(previous_hash='1')  # Create the genesis block
+
+    def create_block(self, previous_hash):
+        block = Block(
+            index=len(self.chain) + 1,
+            previous_hash=previous_hash,
+            timestamp=time(),
+            data=self.current_tracks,
+            hash=self.hash_block(previous_hash)
+        )
+        self.current_tracks = []  # Reset current tracks
+        self.chain.append(block)
+        return block
+
+    def hash_block(self, previous_hash):
+        block_string = json.dumps(self.current_tracks, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+    def add_track(self, artist, track_title, ipfs_hash):
+        self.current_tracks.append({
+            'artist': artist,
+            'track_title': track_title,
+            'ipfs_hash': ipfs_hash
+        })
+        return self.create_block(previous_hash=self.chain[-1].hash)
+
+    def get_chain(self):
+        return [block.to_dict() for block in self.chain]
+
+app = Flask(__name__)
+blockchain = Blockchain()
+
+@app.route('/add_track', methods=['POST'])
+def add_track():
+    data = request.get_json()
+    artist = data.get('artist')
+    track_title = data.get('track_title')
+    ipfs_hash = data.get('ipfs_hash')
+
+    if not artist or not track_title or not ipfs_hash:
+        return jsonify({'error': 'Artist, track title, and IPFS hash are required'}), 400
+
+    block = blockchain.add_track(artist, track_title, ipfs_hash)
+    return jsonify({
+        'message': 'Track added',
+        'block': block.to_dict()
+    }), 201
+
+@app.route('/chain', methods=['GET'])
+def get_chain():
+    return jsonify(blockchain.get_chain()), 200
+
+@app.route('/track/<int:index>', methods=['GET'])
+def get_track(index):
+    if index < 1 or index > len(blockchain.chain):
+        return jsonify({'error': 'Track not found'}), 404
+
+    block = blockchain.chain[index - 1]
+    return jsonify(block.to_dict()), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
