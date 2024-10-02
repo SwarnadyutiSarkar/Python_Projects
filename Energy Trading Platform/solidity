@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract EnergyTrading {
+    struct EnergyProducer {
+        address producer;
+        uint energyAvailable; // in kWh
+    }
+
+    mapping(address => EnergyProducer) public producers;
+    mapping(address => uint) public balances; // User balances in kWh
+
+    event EnergyRegistered(address producer, uint energyAvailable);
+    event EnergyTraded(address buyer, address seller, uint amount);
+
+    function registerEnergy(uint _energyAvailable) public {
+        require(_energyAvailable > 0, "Energy must be greater than zero");
+        
+        producers[msg.sender] = EnergyProducer(msg.sender, _energyAvailable);
+        emit EnergyRegistered(msg.sender, _energyAvailable);
+    }
+
+    function tradeEnergy(address _seller, uint _amount) public {
+        require(producers[_seller].energyAvailable >= _amount, "Not enough energy available");
+        require(_amount > 0, "Amount must be greater than zero");
+
+        producers[_seller].energyAvailable -= _amount;
+        balances[msg.sender] += _amount;
+        
+        emit EnergyTraded(msg.sender, _seller, _amount);
+    }
+
+    function getAvailableEnergy(address _producer) public view returns (uint) {
+        return producers[_producer].energyAvailable;
+    }
+}
