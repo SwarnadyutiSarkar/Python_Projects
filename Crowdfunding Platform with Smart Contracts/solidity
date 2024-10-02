@@ -1,0 +1,45 @@
+// Crowdfunding.sol
+pragma solidity ^0.8.0;
+
+contract Crowdfunding {
+    struct Project {
+        uint id;
+        string name;
+        address payable owner;
+        uint goal;
+        uint amountRaised;
+        bool isCompleted;
+    }
+
+    mapping(uint => Project) public projects;
+    uint public projectCount;
+
+    event ProjectCreated(uint id, string name, address owner, uint goal);
+    event Funded(uint projectId, address funder, uint amount);
+    event ProjectCompleted(uint projectId);
+
+    function createProject(string memory _name, uint _goal) public {
+        projectCount++;
+        projects[projectCount] = Project(projectCount, _name, payable(msg.sender), _goal, 0, false);
+        emit ProjectCreated(projectCount, _name, msg.sender, _goal);
+    }
+
+    function fundProject(uint _projectId) public payable {
+        Project storage project = projects[_projectId];
+        require(msg.value > 0, "Must send ether to fund");
+        require(!project.isCompleted, "Project is already completed");
+
+        project.amountRaised += msg.value;
+        emit Funded(_projectId, msg.sender, msg.value);
+        
+        if (project.amountRaised >= project.goal) {
+            project.isCompleted = true;
+            project.owner.transfer(project.amountRaised);
+            emit ProjectCompleted(_projectId);
+        }
+    }
+
+    function getProject(uint _projectId) public view returns (Project memory) {
+        return projects[_projectId];
+    }
+}
