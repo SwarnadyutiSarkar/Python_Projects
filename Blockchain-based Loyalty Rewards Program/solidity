@@ -1,0 +1,38 @@
+// LoyaltyRewards.sol
+pragma solidity ^0.8.0;
+
+contract LoyaltyRewards {
+    mapping(address => uint) public points;
+    mapping(address => bool) public hasRegistered;
+
+    event PointsAwarded(address indexed user, uint amount);
+    event PointsRedeemed(address indexed user, uint amount);
+    event UserRegistered(address indexed user);
+
+    modifier onlyRegistered() {
+        require(hasRegistered[msg.sender], "User not registered");
+        _;
+    }
+
+    function registerUser() public {
+        require(!hasRegistered[msg.sender], "User already registered");
+        hasRegistered[msg.sender] = true;
+        emit UserRegistered(msg.sender);
+    }
+
+    function awardPoints(address _user, uint _amount) public {
+        require(hasRegistered[_user], "User not registered");
+        points[_user] += _amount;
+        emit PointsAwarded(_user, _amount);
+    }
+
+    function redeemPoints(uint _amount) public onlyRegistered {
+        require(points[msg.sender] >= _amount, "Insufficient points");
+        points[msg.sender] -= _amount;
+        emit PointsRedeemed(msg.sender, _amount);
+    }
+
+    function getPoints() public view onlyRegistered returns (uint) {
+        return points[msg.sender];
+    }
+}
