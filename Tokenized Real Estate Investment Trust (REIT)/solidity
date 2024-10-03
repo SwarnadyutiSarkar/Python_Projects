@@ -1,0 +1,52 @@
+// TokenizedREIT.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract TokenizedREIT is ERC20, Ownable {
+    struct Property {
+        string name;
+        uint256 value; // in wei
+        uint256 shares; // total shares issued for the property
+    }
+
+    Property[] public properties;
+    mapping(uint256 => mapping(address => uint256)) public sharesOwned; // propertyId => (owner => shares)
+
+    event PropertyAdded(uint256 propertyId, string name, uint256 value, uint256 shares);
+    event InvestmentMade(address investor, uint256 propertyId, uint256 shares);
+    event DividendPaid(address investor, uint256 amount);
+
+    constructor() ERC20("Tokenized REIT", "TREIT") {}
+
+    function addProperty(string memory _name, uint256 _value, uint256 _shares) public onlyOwner {
+        properties.push(Property(_name, _value, _shares));
+        _mint(address(this), _shares);
+        emit PropertyAdded(properties.length - 1, _name, _value, _shares);
+    }
+
+    function investInProperty(uint256 _propertyId, uint256 _shares) public {
+        require(_propertyId < properties.length, "Invalid property ID");
+        require(balanceOf(address(this)) >= _shares, "Not enough shares available");
+
+        _transfer(address(this), msg.sender, _shares);
+        sharesOwned[_propertyId][msg.sender] += _shares;
+
+        emit InvestmentMade(msg.sender, _propertyId, _shares);
+    }
+
+    function payDividends(uint256 _propertyId, uint256 _amount) public onlyOwner {
+        for (uint256 i = 0; i < properties.length; i++) {
+            if (sharesOwned[_propertyId][msg.sender] > 0) {
+                uint256 shares = sharesOwned[_propertyId][msg.sender];
+                uint256 dividend = (_amount * shares) / properties[_propertyId].shares;
+                payable(msg.sender).transfer(dividend);
+                emit DividendPaid(msg.sender, dividend);
+            }
+        }
+    }
+
+    receive() external payable {}
+}

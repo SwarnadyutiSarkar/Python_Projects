@@ -1,0 +1,49 @@
+// SupplyChainAudit.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SupplyChainAudit {
+    struct Item {
+        string name;
+        string status;
+        address owner;
+        uint256 timestamp;
+        string location;
+    }
+
+    mapping(uint256 => Item) public items;
+    uint256 public itemCount;
+
+    event ItemCreated(uint256 indexed itemId, string name, string status, address owner, string location);
+    event ItemUpdated(uint256 indexed itemId, string status, address owner, string location);
+
+    function createItem(string memory _name, string memory _status, string memory _location) public {
+        itemCount++;
+        items[itemCount] = Item({
+            name: _name,
+            status: _status,
+            owner: msg.sender,
+            timestamp: block.timestamp,
+            location: _location
+        });
+        emit ItemCreated(itemCount, _name, _status, msg.sender, _location);
+    }
+
+    function updateItem(uint256 _itemId, string memory _status, string memory _location) public {
+        require(_itemId > 0 && _itemId <= itemCount, "Item does not exist");
+        Item storage item = items[_itemId];
+        require(msg.sender == item.owner, "Only the owner can update the item");
+
+        item.status = _status;
+        item.timestamp = block.timestamp;
+        item.location = _location;
+
+        emit ItemUpdated(_itemId, _status, msg.sender, _location);
+    }
+
+    function getItem(uint256 _itemId) public view returns (string memory, string memory, address, uint256, string memory) {
+        require(_itemId > 0 && _itemId <= itemCount, "Item does not exist");
+        Item memory item = items[_itemId];
+        return (item.name, item.status, item.owner, item.timestamp, item.location);
+    }
+}
