@@ -1,0 +1,75 @@
+// SimpleDAO.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract SimpleDAO is Ownable {
+    struct Proposal {
+        string description;
+        uint256 voteCount;
+        uint256 deadline;
+        bool executed;
+    }
+
+    mapping(address => bool) public members;
+    Proposal[] public proposals;
+    mapping(uint256 => mapping(address => bool)) public votes; // proposalId => (voter => voted)
+
+    event ProposalCreated(uint256 proposalId, string description, uint256 deadline);
+    event Voted(uint256 proposalId, address voter);
+    event ProposalExecuted(uint256 proposalId);
+
+    modifier onlyMembers() {
+        require(members[msg.sender], "Not a member of the DAO");
+        _;
+    }
+
+    constructor() {
+        members[msg.sender] = true; // Owner is initially a member
+    }
+
+    function joinDAO() public {
+        members[msg.sender] = true;
+    }
+
+    function createProposal(string memory _description) public onlyMembers {
+        proposals.push(Proposal({
+            description: _description,
+            voteCount: 0,
+            deadline: block.timestamp + 1 weeks,
+            executed: false
+        }));
+        emit ProposalCreated(proposals.length - 1, _description, block.timestamp + 1 weeks);
+    }
+
+    function vote(uint256 _proposalId) public onlyMembers {
+        Proposal storage proposal = proposals[_proposalId];
+        require(block.timestamp < proposal.deadline, "Voting has ended");
+        require(!votes[_proposalId][msg.sender], "Already voted");
+
+        proposal.voteCount += 1;
+        votes[_proposalId][msg.sender] = true;
+        emit Voted(_proposalId, msg.sender);
+    }
+
+    function executeProposal(uint256 _proposalId) public onlyMembers {
+        Proposal storage proposal = proposals[_proposalId];
+        require(block.timestamp >= proposal.deadline, "Voting still ongoing");
+        require(!proposal.executed, "Proposal already executed");
+        require(proposal.voteCount > (membersCount() / 2), "Not enough votes");
+
+        proposal.executed = true;
+        // Logic to execute the proposal goes here
+
+        emit ProposalExecuted(_proposalId);
+    }
+
+    function membersCount() public view returns (uint256 count) {
+        for (uint256 i = 0; i < 256; i++) {
+            if (members[address(i)]) {
+                count++;
+            }
+        }
+    }
+}
