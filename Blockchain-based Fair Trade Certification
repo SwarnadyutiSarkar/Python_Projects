@@ -1,0 +1,107 @@
+import hashlib
+import json
+import uuid
+from time import time
+from flask import Flask, jsonify, request
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.current_certifications = []
+        self.create_block(previous_hash='1', proof=100)
+
+    def create_block(self, proof, previous_hash=None):
+        block = {
+            'index': len(self.chain) + 1,
+            'timestamp': time(),
+            'certifications': self.current_certifications,
+            'proof': proof,
+            'previous_hash': previous_hash or self.hash(self.chain[-1]),
+        }
+        self.current_certifications = []
+        self.chain.append(block)
+        return block
+
+    def create_certification(self, product_id, producer, certifying_body):
+        self.current_certifications.append({
+            'product_id': product_id,
+            'producer': producer,
+            'certifying_body': certifying_body,
+            'timestamp': time(),
+        })
+        return self.last_block['index'] + 1
+
+    @property
+    def last_block(self):
+        return self.chain[-1]
+
+    @staticmethod
+    def hash(block):
+        block_string = json.dumps(block, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+app = Flask(__name__)
+blockchain = Blockchain()
+
+@app.route('/certification/new', methods=['POST'])
+def new_certification():
+    values = request.get_json()
+    required = ['product_id', 'producer', 'certifying_body']
+
+    if not all(k in values for k in required):
+        return 'Missing values', 400
+
+    index = blockchain.create_certification(values['product_id'], values['producer'], values['certifying_body'])
+    response = {'message': f'Certification will be added to Block {index}'}
+    return jsonify(response), 201
+
+@app.route('/mine', methods=['GET'])
+def mine():
+    last_block = blockchain.last_block
+    last_proof = last_block['proof']
+    proof = proof_of_work(last_proof)
+
+    block = blockchain.create_block(proof, last_block['hash'])
+    response = {
+        'message': 'New Block Forged',
+        'index': block['index'],
+        'certifications': block['certifications'],
+        'proof': block['proof'],
+        'previous_hash': block['previous_hash'],
+    }
+    return jsonify(response), 200
+
+def proof_of_work(last_proof):
+    proof = 0
+    while not valid_proof(last_proof, proof):
+        proof += 1
+    return proof
+
+def valid_proof(last_proof, proof):
+    guess = f'{last_proof}{proof}'.encode()
+    guess_hash = hashlib.sha256(guess).hexdigest()
+    return guess_hash[:4] == "0000"
+
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    response = {
+        'chain': blockchain.chain,
+        'length': len(blockchain.chain),
+    }
+    return jsonify(response), 200
+
+@app.route('/certification/verify/<product_id>', methods=['GET'])
+def verify_certification(product_id):
+    certifications = []
+    for block in blockchain.chain:
+        for cert in block['certifications']:
+            if cert['product_id'] == product_id:
+                certifications.append(cert)
+
+    if not certifications:
+        return jsonify({'message': 'No certification found for this product'}), 404
+
+    return jsonify(certifications), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
