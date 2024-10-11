@@ -1,0 +1,60 @@
+from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+import datetime
+import json
+from hashlib import sha256
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///inventory.db'
+db = SQLAlchemy(app)
+
+class Block(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    index = db.Column(db.Integer)
+    timestamp = db.Column(db.String(50))
+    data = db.Column(db.Text)
+    previous_hash = db.Column(db.String(64))
+    hash = db.Column(db.String(64))
+
+    def __repr__(self):
+        return f"Block({self.index}, {self.timestamp}, {self.data}, {self.previous_hash})"
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.create_block(previous_hash='0')
+
+    def create_block(self, data, previous_hash):
+        block = Block(
+            index=len(self.chain) + 1,
+            timestamp=str(datetime.datetime.now()),
+            data=json.dumps(data),
+            previous_hash=previous_hash
+        )
+        block.hash = self.hash(block)
+        db.session.add(block)
+        db.session.commit()
+        self.chain.append(block)
+
+    def hash(self, block):
+        block_string = f"{block.index}{block.timestamp}{block.data}{block.previous_hash}".encode()
+        return sha256(block_string).hexdigest()
+
+    def get_chain(self):
+        return [{'index': block.index, 'timestamp': block.timestamp, 'data': json.loads(block.data), 'previous_hash': block.previous_hash, 'hash': block.hash} for block in self.chain]
+
+@app.route('/add_inventory', methods=['POST'])
+def add_inventory():
+    data = request.json
+    blockchain.create_block(data, blockchain.chain[-1].hash)
+    return jsonify({'message': 'Inventory added to blockchain'}), 201
+
+@app.route('/chain', methods=['GET'])
+def get_chain():
+    chain = blockchain.get_chain()
+    return jsonify(chain), 200
+
+if __name__ == '__main__':
+    db.create_all()
+    blockchain = Blockchain()
+    app.run(debug=True)
