@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract TravelBookingSystem {
+    enum BookingStatus { Created, Confirmed, Completed, Cancelled }
+
+    struct Booking {
+        address traveler;
+        string destination;
+        uint256 checkIn;
+        uint256 checkOut;
+        uint256 amount;
+        BookingStatus status;
+    }
+
+    mapping(uint256 => Booking) public bookings;
+    uint256 public bookingCount;
+
+    event BookingCreated(uint256 bookingId, address traveler, string destination, uint256 checkIn, uint256 checkOut, uint256 amount);
+    event BookingConfirmed(uint256 bookingId);
+    event BookingCompleted(uint256 bookingId);
+    event BookingCancelled(uint256 bookingId);
+
+    function createBooking(string memory _destination, uint256 _checkIn, uint256 _checkOut) public payable {
+        require(msg.value > 0, "Payment must be greater than zero");
+        require(_checkIn < _checkOut, "Check-in date must be before check-out date");
+
+        bookingCount++;
+        bookings[bookingCount] = Booking(msg.sender, _destination, _checkIn, _checkOut, msg.value, BookingStatus.Created);
+        emit BookingCreated(bookingCount, msg.sender, _destination, _checkIn, _checkOut, msg.value);
+    }
+
+    function confirmBooking(uint256 _bookingId) public {
+        Booking storage booking = bookings[_bookingId];
+        require(booking.status == BookingStatus.Created, "Booking is not created or already confirmed");
+        require(msg.sender == booking.traveler, "Only the traveler can confirm the booking");
+
+        booking.status = BookingStatus.Confirmed;
+        emit BookingConfirmed(_bookingId);
+    }
+
+    function completeBooking(uint256 _bookingId) public {
+        Booking storage booking = bookings[_bookingId];
+        require(booking.status == BookingStatus.Confirmed, "Booking is not confirmed");
+        require(msg.sender == booking.traveler, "Only the traveler can complete the booking");
+
+        booking.status = BookingStatus.Completed;
+        payable(booking.traveler).transfer(booking.amount); // Refund or handle payment distribution
+        emit BookingCompleted(_bookingId);
+    }
+
+    function cancelBooking(uint256 _bookingId) public {
+        Booking storage booking = bookings[_bookingId];
+        require(booking.status == BookingStatus.Created, "Booking cannot be cancelled");
+        require(msg.sender == booking.traveler, "Only the traveler can cancel the booking");
+
+        booking.status = BookingStatus.Cancelled;
+        emit BookingCancelled(_bookingId);
+    }
+
+    // Fallback function to accept payments
+    receive() external payable {}
+}

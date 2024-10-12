@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract FreelanceWorkAgreement {
+    enum JobStatus { Open, InProgress, Completed, Cancelled }
+
+    struct Job {
+        address client;
+        address freelancer;
+        string description;
+        uint256 payment;
+        JobStatus status;
+    }
+
+    mapping(uint256 => Job) public jobs;
+    uint256 public jobCount;
+
+    event JobCreated(uint256 jobId, address client, string description, uint256 payment);
+    event JobApplied(uint256 jobId, address freelancer);
+    event JobCompleted(uint256 jobId, address freelancer);
+    event JobCancelled(uint256 jobId);
+
+    function createJob(string memory _description, uint256 _payment) public {
+        require(_payment > 0, "Payment must be greater than zero");
+        jobCount++;
+        jobs[jobCount] = Job(msg.sender, address(0), _description, _payment, JobStatus.Open);
+        emit JobCreated(jobCount, msg.sender, _description, _payment);
+    }
+
+    function applyForJob(uint256 _jobId) public {
+        Job storage job = jobs[_jobId];
+        require(job.status == JobStatus.Open, "Job is not open");
+        require(job.freelancer == address(0), "Job already has a freelancer");
+        
+        job.freelancer = msg.sender;
+        job.status = JobStatus.InProgress;
+        emit JobApplied(_jobId, msg.sender);
+    }
+
+    function completeJob(uint256 _jobId) public {
+        Job storage job = jobs[_jobId];
+        require(job.status == JobStatus.InProgress, "Job is not in progress");
+        require(msg.sender == job.freelancer, "Only the assigned freelancer can complete the job");
+        
+        job.status = JobStatus.Completed;
+        payable(job.client).transfer(job.payment);
+        emit JobCompleted(_jobId, msg.sender);
+    }
+
+    function cancelJob(uint256 _jobId) public {
+        Job storage job = jobs[_jobId];
+        require(job.status == JobStatus.Open, "Job cannot be cancelled");
+        require(msg.sender == job.client, "Only the client can cancel the job");
+        
+        job.status = JobStatus.Cancelled;
+        emit JobCancelled(_jobId);
+    }
+
+    // Fallback function to accept payments
+    receive() external payable {}
+}
