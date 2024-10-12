@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DigitalCertificates {
+    struct Certificate {
+        string name;
+        string recipient;
+        string issuer;
+        uint256 issueDate;
+        bool isIssued;
+    }
+
+    mapping(uint256 => Certificate) public certificates;
+    mapping(address => uint256[]) public ownerCertificates;
+    uint256 public certificateCount;
+
+    event CertificateIssued(uint256 certificateId, string name, string recipient, string issuer, uint256 issueDate);
+
+    function issueCertificate(string memory _name, string memory _recipient, string memory _issuer) public {
+        certificateCount++;
+        certificates[certificateCount] = Certificate({
+            name: _name,
+            recipient: _recipient,
+            issuer: _issuer,
+            issueDate: block.timestamp,
+            isIssued: true
+        });
+
+        ownerCertificates[msg.sender].push(certificateCount);
+        emit CertificateIssued(certificateCount, _name, _recipient, _issuer, block.timestamp);
+    }
+
+    function getCertificate(uint256 _certificateId) public view returns (string memory, string memory, string memory, uint256, bool) {
+        Certificate memory cert = certificates[_certificateId];
+        require(cert.isIssued, "Certificate not found");
+        return (cert.name, cert.recipient, cert.issuer, cert.issueDate, cert.isIssued);
+    }
+
+    function getCertificatesByOwner(address _owner) public view returns (uint256[] memory) {
+        return ownerCertificates[_owner];
+    }
+
+    function verifyCertificate(uint256 _certificateId) public view returns (bool) {
+        return certificates[_certificateId].isIssued;
+    }
+}
