@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Document Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Secure Document Management System</h1>
+    
+    <div>
+        <h2>Upload Document</h2>
+        <input id="docName" placeholder="Document Name" />
+        <input id="docHash" placeholder="Document Hash" />
+        <button onclick="uploadDocument()">Upload Document</button>
+    </div>
+
+    <div>
+        <h2>Grant Access</h2>
+        <input id="accessUser" placeholder="User Address" />
+        <input id="accessDocId" type="number" placeholder="Document ID" />
+        <button onclick="grantAccess()">Grant Access</button>
+    </div>
+
+    <div>
+        <h2>Revoke Access</h2>
+        <input id="revokeUser" placeholder="User Address" />
+        <input id="revokeDocId" type="number" placeholder="Document ID" />
+        <button onclick="revokeAccess()">Revoke Access</button>
+    </div>
+
+    <div>
+        <h2>Check Access</h2>
+        <input id="checkUser" placeholder="User Address" />
+        <input id="checkDocId" type="number" placeholder="Document ID" />
+        <button onclick="checkAccess()">Check Access</button>
+        <p id="accessResult"></p>
+    </div>
+
+    <script>
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+        const contractABI = [ /* ABI goes here */ ];
+
+        let web3 = new Web3(Web3.givenProvider || "http://localhost:8545");
+        let contract = new web3.eth.Contract(contractABI, contractAddress);
+        let account;
+
+        async function init() {
+            const accounts = await web3.eth.requestAccounts();
+            account = accounts[0];
+        }
+
+        async function uploadDocument() {
+            const name = document.getElementById('docName').value;
+            const hash = document.getElementById('docHash').value;
+
+            await contract.methods.uploadDocument(name, hash).send({ from: account });
+            alert('Document uploaded!');
+        }
+
+        async function grantAccess() {
+            const userAddress = document.getElementById('accessUser').value;
+            const docId = document.getElementById('accessDocId').value;
+
+            await contract.methods.grantAccess(userAddress, docId).send({ from: account });
+            alert('Access granted!');
+        }
+
+        async function revokeAccess() {
+            const userAddress = document.getElementById('revokeUser').value;
+            const docId = document.getElementById('revokeDocId').value;
+
+            await contract.methods.revokeAccess(userAddress, docId).send({ from: account });
+            alert('Access revoked!');
+        }
+
+        async function checkAccess() {
+            const userAddress = document.getElementById('checkUser').value;
+            const docId = document.getElementById('checkDocId').value;
+
+            const access = await contract.methods.hasAccess(userAddress, docId).call();
+            document.getElementById('accessResult').innerText = access ? "Access Granted" : "Access Denied";
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
