@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract JobMarketplace {
+    struct Job {
+        uint id;
+        string title;
+        string description;
+        address employer;
+        address applicant;
+        uint reward;
+        bool isCompleted;
+    }
+
+    mapping(uint => Job) public jobs;
+    uint public jobCount;
+
+    event JobPosted(uint id, string title, uint reward);
+    event JobApplied(uint id, address applicant);
+    event JobCompleted(uint id, address applicant);
+
+    function postJob(string memory _title, string memory _description, uint _reward) public {
+        jobCount++;
+        jobs[jobCount] = Job(jobCount, _title, _description, msg.sender, address(0), _reward, false);
+        emit JobPosted(jobCount, _title, _reward);
+    }
+
+    function applyForJob(uint _id) public {
+        require(_id > 0 && _id <= jobCount, "Job does not exist");
+        require(jobs[_id].applicant == address(0), "Job already applied for");
+        jobs[_id].applicant = msg.sender;
+        emit JobApplied(_id, msg.sender);
+    }
+
+    function completeJob(uint _id) public {
+        require(_id > 0 && _id <= jobCount, "Job does not exist");
+        require(msg.sender == jobs[_id].employer, "Only employer can complete the job");
+        require(!jobs[_id].isCompleted, "Job already completed");
+
+        jobs[_id].isCompleted = true;
+        payable(jobs[_id].applicant).transfer(jobs[_id].reward);
+        emit JobCompleted(_id, jobs[_id].applicant);
+    }
+
+    function getJob(uint _id) public view returns (Job memory) {
+        require(_id > 0 && _id <= jobCount, "Job does not exist");
+        return jobs[_id];
+    }
+}
