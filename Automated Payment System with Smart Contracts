@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Payment System</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Automated Payment System</h1>
+    
+    <div>
+        <h2>Create Payment</h2>
+        <input id="recipient" placeholder="Recipient Address" />
+        <input id="amount" type="number" placeholder="Amount in Wei" />
+        <button onclick="createPayment()">Create Payment</button>
+    </div>
+
+    <div>
+        <h2>Complete Payment</h2>
+        <input id="paymentId" type="number" placeholder="Payment ID" />
+        <button onclick="completePayment()">Complete Payment</button>
+    </div>
+
+    <div>
+        <h2>Get Payment Details</h2>
+        <input id="getPaymentId" type="number" placeholder="Payment ID" />
+        <button onclick="getPayment()">Get Payment</button>
+        <pre id="paymentDetails"></pre>
+    </div>
+
+    <script>
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+        const contractABI = [ /* ABI goes here */ ];
+
+        let web3 = new Web3(Web3.givenProvider || "http://localhost:8545");
+        let contract = new web3.eth.Contract(contractABI, contractAddress);
+        let account;
+
+        async function init() {
+            const accounts = await web3.eth.requestAccounts();
+            account = accounts[0];
+        }
+
+        async function createPayment() {
+            const recipient = document.getElementById('recipient').value;
+            const amount = document.getElementById('amount').value;
+
+            await contract.methods.createPayment(recipient, amount).send({ from: account });
+            alert('Payment created!');
+        }
+
+        async function completePayment() {
+            const paymentId = document.getElementById('paymentId').value;
+
+            await contract.methods.completePayment(paymentId).send({ from: account });
+            alert('Payment completed!');
+        }
+
+        async function getPayment() {
+            const paymentId = document.getElementById('getPaymentId').value;
+            const payment = await contract.methods.getPayment(paymentId).call();
+
+            document.getElementById('paymentDetails').innerText = JSON.stringify(payment, null, 2);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
+
+SOLIDITY
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract AutomatedPaymentSystem {
+    struct Payment {
+        uint id;
+        address payable recipient;
+        uint amount;
+        bool isCompleted;
+        uint createdAt;
+    }
+
+    mapping(uint => Payment) public payments;
+    uint public paymentCount;
+
+    event PaymentCreated(uint id, address recipient, uint amount);
+    event PaymentCompleted(uint id);
+
+    function createPayment(address payable _recipient, uint _amount) public {
+        require(_amount > 0, "Amount must be greater than 0");
+        paymentCount++;
+        payments[paymentCount] = Payment(paymentCount, _recipient, _amount, false, block.timestamp);
+        emit PaymentCreated(paymentCount, _recipient, _amount);
+    }
+
+    function completePayment(uint _id) public {
+        require(_id > 0 && _id <= paymentCount, "Payment does not exist");
+        Payment storage payment = payments[_id];
+        require(!payment.isCompleted, "Payment already completed");
+        require(msg.sender == payment.recipient, "Only recipient can complete the payment");
+
+        payment.isCompleted = true;
+        payment.recipient.transfer(payment.amount);
+        emit PaymentCompleted(_id);
+    }
+
+    function getPayment(uint _id) public view returns (Payment memory) {
+        require(_id > 0 && _id <= paymentCount, "Payment does not exist");
+        return payments[_id];
+    }
+
+    // Function to fund the contract for payments
+    receive() external payable {}
+}
