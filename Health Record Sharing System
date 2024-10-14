@@ -1,0 +1,89 @@
+import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import HealthRecordSystem from './HealthRecordSystem.json'; // ABI file
+
+const App = () => {
+  const [account, setAccount] = useState('');
+  const [contract, setContract] = useState(null);
+  const [recordData, setRecordData] = useState('');
+  const [recordId, setRecordId] = useState(0);
+  const [records, setRecords] = useState([]);
+  
+  useEffect(() => {
+    const init = async () => {
+      const { ethereum } = window;
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const networkId = await provider.getNetwork().chainId;
+
+        // Replace with your deployed contract address
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+        const contractInstance = new ethers.Contract(contractAddress, HealthRecordSystem.abi, signer);
+        
+        setContract(contractInstance);
+        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+        setAccount(accounts[0]);
+      }
+    };
+    init();
+  }, []);
+
+  const createRecord = async () => {
+    const tx = await contract.createRecord(recordData);
+    await tx.wait();
+    alert('Health record created!');
+  };
+
+  const shareRecord = async () => {
+    const providerAddress = prompt("Enter the provider's address:");
+    const tx = await contract.shareRecord(recordId, providerAddress);
+    await tx.wait();
+    alert('Health record shared!');
+  };
+
+  const getRecords = async () => {
+    const userRecords = await contract.getUserRecords();
+    const fetchedRecords = [];
+    for (let id of userRecords) {
+      const record = await contract.getRecord(id);
+      fetchedRecords.push({ id, ...record });
+    }
+    setRecords(fetchedRecords);
+  };
+
+  return (
+    <div>
+      <h1>Health Record Sharing System</h1>
+      <p>Connected Account: {account}</p>
+      <input
+        type="text"
+        value={recordData}
+        onChange={(e) => setRecordData(e.target.value)}
+        placeholder="Record Data"
+      />
+      <button onClick={createRecord}>Create Health Record</button>
+      
+      <input
+        type="number"
+        value={recordId}
+        onChange={(e) => setRecordId(e.target.value)}
+        placeholder="Record ID to share"
+      />
+      <button onClick={shareRecord}>Share Health Record</button>
+      
+      <button onClick={getRecords}>Get My Records</button>
+      
+      <h2>Your Health Records:</h2>
+      <ul>
+        {records.map((record) => (
+          <li key={record.id}>
+            ID: {record.id}, Data: {record.recordData}, Owner: {record.owner}, Shared: {record.shared ? 'Yes' : 'No'}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default App;
