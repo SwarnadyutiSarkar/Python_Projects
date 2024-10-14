@@ -1,0 +1,58 @@
+import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import DecentralizedGame from './DecentralizedGame.json'; // ABI file
+
+const App = () => {
+  const [account, setAccount] = useState('');
+  const [betAmount, setBetAmount] = useState(0);
+  const [contract, setContract] = useState(null);
+
+  useEffect(() => {
+    const init = async () => {
+      const { ethereum } = window;
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const networkId = await provider.getNetwork().chainId;
+        
+        // Replace with your deployed contract address
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+        const contractInstance = new ethers.Contract(contractAddress, DecentralizedGame.abi, signer);
+        
+        setContract(contractInstance);
+        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+        setAccount(accounts[0]);
+      }
+    };
+    init();
+  }, []);
+
+  const joinGame = async () => {
+    const tx = await contract.joinGame({ value: ethers.utils.parseEther(betAmount.toString()) });
+    await tx.wait();
+    alert('Joined the game!');
+  };
+
+  const pickWinner = async () => {
+    const tx = await contract.pickWinner();
+    await tx.wait();
+    alert('Winner has been picked!');
+  };
+
+  return (
+    <div>
+      <h1>Decentralized Gaming Platform</h1>
+      <p>Connected Account: {account}</p>
+      <input
+        type="number"
+        value={betAmount}
+        onChange={(e) => setBetAmount(e.target.value)}
+        placeholder="Bet Amount (in ETH)"
+      />
+      <button onClick={joinGame}>Join Game</button>
+      <button onClick={pickWinner}>Pick Winner</button>
+    </div>
+  );
+};
+
+export default App;
