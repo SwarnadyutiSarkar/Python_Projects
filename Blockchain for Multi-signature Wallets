@@ -1,0 +1,118 @@
+import hashlib
+import json
+from time import time
+from flask import Flask, jsonify, request
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.current_transactions = []
+        self.create_block(previous_hash='1', proof=100)  # Genesis block
+
+    def create_block(self, proof, previous_hash):
+        block = {
+            'index': len(self.chain) + 1,
+            'timestamp': time(),
+            'transactions': self.current_transactions,
+            'proof': proof,
+            'previous_hash': previous_hash,
+        }
+        self.current_transactions = []
+        self.chain.append(block)
+        return block
+
+    def add_transaction(self, sender, recipient, amount):
+        self.current_transactions.append({
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount,
+        })
+        return self.last_block['index'] + 1
+
+    @property
+    def last_block(self):
+        return self.chain[-1]
+
+    def hash(self, block):
+        block_string = json.dumps(block, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+    def get_balance(self, address):
+        balance = 0
+        for block in self.chain:
+            for transaction in block['transactions']:
+                if transaction['sender'] == address:
+                    balance -= transaction['amount']
+                if transaction['recipient'] == address:
+                    balance += transaction['amount']
+        return balance
+
+app = Flask(__name__)
+blockchain = Blockchain()
+
+# Multi-signature wallet example
+multisig_wallets = {}
+
+@app.route('/create_wallet', methods=['POST'])
+def create_wallet():
+    data = request.get_json()
+    wallet_id = data['wallet_id']
+    owners = data['owners']  # List of owner addresses
+    multisig_wallets[wallet_id] = {
+        'owners': owners,
+        'signatures': {},
+        'required_signatures': data['required_signatures'],
+    }
+    return jsonify({'message': 'Wallet created successfully!'}), 201
+
+@app.route('/send', methods=['POST'])
+def send():
+    data = request.get_json()
+    wallet_id = data['wallet_id']
+    sender = data['sender']
+    recipient = data['recipient']
+    amount = data['amount']
+    
+    if wallet_id not in multisig_wallets:
+        return jsonify({'message': 'Wallet not found!'}), 404
+
+    wallet = multisig_wallets[wallet_id]
+
+    if sender not in wallet['owners']:
+        return jsonify({'message': 'Sender not an owner of the wallet!'}), 403
+
+    # Record the transaction and collect signatures
+    if sender not in wallet['signatures']:
+        wallet['signatures'][sender] = False
+
+    wallet['signatures'][sender] = True
+
+    # Check if we have enough signatures
+    if sum(wallet['signatures'].values()) >= wallet['required_signatures']:
+        index = blockchain.add_transaction(sender, recipient, amount)
+        previous_block = blockchain.last_block
+        proof = 200  # This should be replaced with a proper proof-of-work
+        blockchain.create_block(proof, blockchain.hash(previous_block))
+        return jsonify({
+            'message': 'Transaction successful!',
+            'block_index': index,
+            'block': blockchain.last_block
+        }), 201
+
+    return jsonify({'message': 'Waiting for more signatures.'}), 200
+
+@app.route('/balance/<address>', methods=['GET'])
+def balance(address):
+    balance = blockchain.get_balance(address)
+    return jsonify({'address': address, 'balance': balance}), 200
+
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    response = {
+        'chain': blockchain.chain,
+        'length': len(blockchain.chain),
+    }
+    return jsonify(response), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
