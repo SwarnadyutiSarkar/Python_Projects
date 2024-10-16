@@ -1,0 +1,48 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const app = express();
+const port = 3000;
+
+app.use(bodyParser.json());
+
+let loans = [];
+let loanId = 1;
+
+// Request a loan
+app.post('/request-loan', (req, res) => {
+    const { borrower, amount, interest, duration } = req.body;
+    const newLoan = { id: loanId++, borrower, amount, interest, duration, isFunded: false, isRepaid: false };
+    loans.push(newLoan);
+    res.status(201).json(newLoan);
+});
+
+// Fund a loan
+app.post('/fund-loan/:id', (req, res) => {
+    const loan = loans.find(l => l.id === parseInt(req.params.id));
+    if (!loan || loan.isFunded) return res.status(404).json({ message: 'Loan not found or already funded' });
+
+    loan.isFunded = true;
+    res.json(loan);
+});
+
+// Repay a loan
+app.post('/repay-loan/:id', (req, res) => {
+    const loan = loans.find(l => l.id === parseInt(req.params.id));
+    const { borrower } = req.body;
+
+    if (!loan || loan.borrower !== borrower) return res.status(404).json({ message: 'Loan not found or borrower mismatch' });
+    if (!loan.isFunded || loan.isRepaid) return res.status(400).json({ message: 'Loan not funded or already repaid' });
+
+    loan.isRepaid = true;
+    res.json({ message: 'Loan repaid successfully', loan });
+});
+
+// List all loans
+app.get('/loans', (req, res) => {
+    res.json(loans);
+});
+
+// Start the server
+app.listen(port, () => {
+    console.log(`Peer-to-Peer Lending app listening at http://localhost:${port}`);
+});
