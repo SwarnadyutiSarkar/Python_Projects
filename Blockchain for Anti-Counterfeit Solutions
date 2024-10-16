@@ -1,0 +1,89 @@
+import hashlib
+import json
+from time import time
+from flask import Flask, jsonify, request
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.current_transactions = []
+        self.create_block(previous_hash='1', proof=100)  # Genesis block
+
+    def create_block(self, proof, previous_hash):
+        block = {
+            'index': len(self.chain) + 1,
+            'timestamp': time(),
+            'transactions': self.current_transactions,
+            'proof': proof,
+            'previous_hash': previous_hash,
+        }
+        self.current_transactions = []
+        self.chain.append(block)
+        return block
+
+    def add_transaction(self, product_id, owner, description):
+        self.current_transactions.append({
+            'product_id': product_id,
+            'owner': owner,
+            'description': description,
+        })
+        return self.last_block['index'] + 1
+
+    @property
+    def last_block(self):
+        return self.chain[-1]
+
+    def hash(self, block):
+        block_string = json.dumps(block, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+    def verify_product(self, product_id):
+        for block in self.chain:
+            for transaction in block['transactions']:
+                if transaction['product_id'] == product_id:
+                    return transaction
+        return None
+
+
+app = Flask(__name__)
+blockchain = Blockchain()
+
+@app.route('/add_product', methods=['POST'])
+def add_product():
+    data = request.get_json()
+    product_id = data['product_id']
+    owner = data['owner']
+    description = data['description']
+    
+    index = blockchain.add_transaction(product_id, owner, description)
+    previous_block = blockchain.last_block
+    proof = 200  # This should be replaced with a proper proof-of-work
+    blockchain.create_block(proof, blockchain.hash(previous_block))
+
+    return jsonify({
+        'message': 'Product added successfully!',
+        'block_index': index,
+        'block': blockchain.last_block
+    }), 201
+
+@app.route('/verify_product/<product_id>', methods=['GET'])
+def verify_product(product_id):
+    product = blockchain.verify_product(product_id)
+    if product:
+        return jsonify({
+            'message': 'Product found!',
+            'product': product
+        }), 200
+    else:
+        return jsonify({'message': 'Product not found!'}), 404
+
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    response = {
+        'chain': blockchain.chain,
+        'length': len(blockchain.chain),
+    }
+    return jsonify(response), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
