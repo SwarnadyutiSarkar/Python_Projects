@@ -1,0 +1,62 @@
+from flask import Flask, request, jsonify
+import hashlib
+import json
+import uuid
+
+app = Flask(__name__)
+
+# In-memory database to store transactions
+transactions = []
+
+def create_transaction(sender, receiver, amount):
+    transaction = {
+        'id': str(uuid.uuid4()),  # Unique transaction ID
+        'sender': sender,
+        'receiver': receiver,
+        'amount': amount,
+        'status': 'pending'
+    }
+    return transaction
+
+def calculate_hash(transaction):
+    transaction_string = json.dumps(transaction, sort_keys=True).encode()
+    return hashlib.sha256(transaction_string).hexdigest()
+
+@app.route('/create_transaction', methods=['POST'])
+def create_payment():
+    data = request.get_json()
+    sender = data.get('sender')
+    receiver = data.get('receiver')
+    amount = data.get('amount')
+
+    if not sender or not receiver or amount <= 0:
+        return jsonify({'error': 'Invalid transaction data'}), 400
+
+    transaction = create_transaction(sender, receiver, amount)
+    transaction['hash'] = calculate_hash(transaction)
+
+    transactions.append(transaction)
+    
+    response = {
+        'message': 'Transaction created',
+        'transaction_id': transaction['id'],
+        'transaction_hash': transaction['hash'],
+        'status': transaction['status']
+    }
+    
+    return jsonify(response), 201
+
+@app.route('/transactions', methods=['GET'])
+def get_transactions():
+    return jsonify(transactions), 200
+
+@app.route('/confirm_transaction/<transaction_id>', methods=['PUT'])
+def confirm_payment(transaction_id):
+    for transaction in transactions:
+        if transaction['id'] == transaction_id:
+            transaction['status'] = 'confirmed'
+            return jsonify({'message': 'Transaction confirmed', 'transaction': transaction}), 200
+    return jsonify({'error': 'Transaction not found'}), 404
+
+if __name__ == '__main__':
+    app.run(debug=True)

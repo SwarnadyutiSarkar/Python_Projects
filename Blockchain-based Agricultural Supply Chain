@@ -1,0 +1,70 @@
+import hashlib
+import json
+from time import time
+from flask import Flask, jsonify, request
+
+class Block:
+    def __init__(self, index, timestamp, data, previous_hash):
+        self.index = index
+        self.timestamp = timestamp
+        self.data = data
+        self.previous_hash = previous_hash
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self):
+        block_string = json.dumps(self.__dict__, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.create_block(previous_hash='0')  # Genesis block
+
+    def create_block(self, data=None, previous_hash=None):
+        block = Block(len(self.chain), time(), data or {}, previous_hash or self.chain[-1].hash)
+        self.chain.append(block)
+        return block
+
+    def get_last_block(self):
+        return self.chain[-1]
+
+app = Flask(__name__)
+blockchain = Blockchain()
+
+@app.route('/add_product', methods=['POST'])
+def add_product():
+    data = request.get_json()
+    product_info = {
+        'name': data['name'],
+        'quantity': data['quantity'],
+        'location': data['location'],
+        'timestamp': time()
+    }
+    block = blockchain.create_block(data=product_info)
+    response = {
+        'message': 'Product added to the supply chain',
+        'block_index': block.index,
+        'block_hash': block.hash,
+        'product_info': block.data
+    }
+    return jsonify(response), 201
+
+@app.route('/chain', methods=['GET'])
+def get_chain():
+    chain_data = []
+    for block in blockchain.chain:
+        chain_data.append({
+            'index': block.index,
+            'timestamp': block.timestamp,
+            'data': block.data,
+            'previous_hash': block.previous_hash,
+            'hash': block.hash
+        })
+    response = {
+        'chain': chain_data,
+        'length': len(chain_data)
+    }
+    return jsonify(response), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
