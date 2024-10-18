@@ -1,0 +1,114 @@
+class Item:
+    def __init__(self, seller, name, price):
+        self.seller = seller
+        self.name = name
+        self.price = price
+        self.is_sold = False
+
+class User:
+    def __init__(self, username):
+        self.username = username
+        self.balance = 0
+        self.items_for_sale = []
+
+class Marketplace:
+    def __init__(self):
+        self.users = {}
+        self.items = []
+
+    def register_user(self, username):
+        if username in self.users:
+            print("Username already exists.")
+        else:
+            self.users[username] = User(username)
+            print(f"User {username} registered successfully.")
+
+    def add_funds(self, username, amount):
+        if username not in self.users:
+            print("User not found.")
+            return
+        
+        self.users[username].balance += amount
+        print(f"${amount} added to {username}'s balance.")
+
+    def list_item(self, username, name, price):
+        if username not in self.users:
+            print("User not found.")
+            return
+        
+        item = Item(username, name, price)
+        self.users[username].items_for_sale.append(item)
+        self.items.append(item)
+        print(f"{name} listed for sale by {username} at ${price}.")
+
+    def view_items(self):
+        if not self.items:
+            print("No items available for sale.")
+            return
+        
+        print("\nAvailable Items for Sale:")
+        for index, item in enumerate(self.items):
+            if not item.is_sold:
+                print(f"{index}: {item.name} by {item.seller} for ${item.price}")
+
+    def purchase_item(self, buyer_username, item_index):
+        if buyer_username not in self.users:
+            print("User not found.")
+            return
+        
+        try:
+            item = self.items[item_index]
+            if item.is_sold:
+                print("This item has already been sold.")
+                return
+            
+            buyer = self.users[buyer_username]
+            if buyer.balance < item.price:
+                print("Insufficient balance to purchase this item.")
+                return
+            
+            buyer.balance -= item.price
+            item.is_sold = True
+            print(f"{buyer_username} purchased {item.name} for ${item.price}.")
+        except IndexError:
+            print("Invalid item index.")
+
+    def display_menu(self):
+        while True:
+            print("\nDecentralized Marketplace")
+            print("1. Register User")
+            print("2. Add Funds")
+            print("3. List Item for Sale")
+            print("4. View Items for Sale")
+            print("5. Purchase Item")
+            print("6. Exit")
+            choice = input("Choose an option: ")
+
+            if choice == '1':
+                username = input("Enter username: ")
+                self.register_user(username)
+            elif choice == '2':
+                username = input("Enter your username: ")
+                amount = float(input("Enter amount to add: $"))
+                self.add_funds(username, amount)
+            elif choice == '3':
+                username = input("Enter your username: ")
+                name = input("Enter item name: ")
+                price = float(input("Enter item price: $"))
+                self.list_item(username, name, price)
+            elif choice == '4':
+                self.view_items()
+            elif choice == '5':
+                buyer_username = input("Enter your username: ")
+                self.view_items()
+                item_index = int(input("Enter item index to purchase: "))
+                self.purchase_item(buyer_username, item_index)
+            elif choice == '6':
+                print("Exiting marketplace.")
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+if __name__ == "__main__":
+    marketplace = Marketplace()
+    marketplace.display_menu()
