@@ -1,0 +1,117 @@
+class User:
+    def __init__(self, username, user_type):
+        self.username = username
+        self.user_type = user_type  # 'researcher' or 'funder'
+        self.balance = 0
+        self.grants_applied = []
+
+class Grant:
+    def __init__(self, researcher, title, amount, description):
+        self.researcher = researcher
+        self.title = title
+        self.amount = amount
+        self.description = description
+        self.is_funded = False
+
+class ResearchFundingPlatform:
+    def __init__(self):
+        self.users = {}
+        self.grants = []
+
+    def register_user(self, username, user_type):
+        if username in self.users:
+            print("Username already exists.")
+        else:
+            self.users[username] = User(username, user_type)
+            print(f"{user_type.capitalize()} {username} registered successfully.")
+
+    def add_funds(self, username, amount):
+        if username not in self.users:
+            print("User not found.")
+            return
+        
+        self.users[username].balance += amount
+        print(f"${amount} added to {username}'s balance.")
+
+    def apply_for_grant(self, username, title, amount, description):
+        if username not in self.users or self.users[username].user_type != 'researcher':
+            print("Only researchers can apply for grants.")
+            return
+        
+        grant = Grant(username, title, amount, description)
+        self.users[username].grants_applied.append(grant)
+        self.grants.append(grant)
+        print(f"Grant application '{title}' submitted by {username} for ${amount}.")
+
+    def fund_grant(self, funder_username, grant_index):
+        if funder_username not in self.users or self.users[funder_username].user_type != 'funder':
+            print("Only funders can fund grants.")
+            return
+        
+        try:
+            grant = self.grants[grant_index]
+            if grant.is_funded:
+                print("This grant has already been funded.")
+                return
+            
+            if self.users[funder_username].balance < grant.amount:
+                print("Insufficient balance to fund this grant.")
+                return
+            
+            self.users[funder_username].balance -= grant.amount
+            grant.is_funded = True
+            print(f"{funder_username} funded the grant '{grant.title}' for ${grant.amount}.")
+        except IndexError:
+            print("Invalid grant index.")
+
+    def view_grants(self):
+        if not self.grants:
+            print("No grant applications available.")
+            return
+        
+        print("\nAvailable Grant Applications:")
+        for index, grant in enumerate(self.grants):
+            funded_status = "Funded" if grant.is_funded else "Available"
+            print(f"{index}: '{grant.title}' by {grant.researcher} for ${grant.amount} - {funded_status}")
+
+    def display_menu(self):
+        while True:
+            print("\nResearch Funding Platform")
+            print("1. Register User")
+            print("2. Add Funds")
+            print("3. Apply for Grant")
+            print("4. View Grants")
+            print("5. Fund Grant")
+            print("6. Exit")
+            choice = input("Choose an option: ")
+
+            if choice == '1':
+                username = input("Enter username: ")
+                user_type = input("Enter user type (researcher/funder): ").lower()
+                self.register_user(username, user_type)
+            elif choice == '2':
+                username = input("Enter your username: ")
+                amount = float(input("Enter amount to add: $"))
+                self.add_funds(username, amount)
+            elif choice == '3':
+                username = input("Enter your username: ")
+                title = input("Enter grant title: ")
+                amount = float(input("Enter grant amount: $"))
+                description = input("Enter grant description: ")
+                self.apply_for_grant(username, title, amount, description)
+            elif choice == '4':
+                self.view_grants()
+            elif choice == '5':
+                funder_username = input("Enter your username: ")
+                self.view_grants()
+                grant_index = int(input("Enter grant index to fund: "))
+                self.fund_grant(funder_username, grant_index)
+            elif choice == '6':
+                print("Exiting platform.")
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+if __name__ == "__main__":
+    platform = ResearchFundingPlatform()
+    platform.display_menu()
