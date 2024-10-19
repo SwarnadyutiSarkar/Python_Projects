@@ -1,0 +1,78 @@
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///art_provenance.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+class ArtPiece(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    artist = db.Column(db.String(100), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    owner = db.Column(db.String(100), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ArtPiece {self.title}>'
+
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
+@app.route('/create_art', methods=['POST'])
+def create_art():
+    data = request.json
+    art_piece = ArtPiece(
+        title=data['title'],
+        artist=data['artist'],
+        year=data['year'],
+        owner=data['owner']
+    )
+    db.session.add(art_piece)
+    db.session.commit()
+    return jsonify({"message": "Art piece created successfully!"}), 201
+
+@app.route('/transfer_ownership/<int:art_id>', methods=['POST'])
+def transfer_ownership(art_id):
+    data = request.json
+    art_piece = ArtPiece.query.get(art_id)
+    if not art_piece:
+        return jsonify({"message": "Art piece not found!"}), 404
+    art_piece.owner = data['new_owner']
+    db.session.commit()
+    return jsonify({"message": f"Ownership of {art_piece.title} transferred to {data['new_owner']}!"}), 200
+
+@app.route('/art_details/<int:art_id>', methods=['GET'])
+def art_details(art_id):
+    art_piece = ArtPiece.query.get(art_id)
+    if art_piece:
+        return jsonify({
+            "id": art_piece.id,
+            "title": art_piece.title,
+            "artist": art_piece.artist,
+            "year": art_piece.year,
+            "owner": art_piece.owner,
+            "timestamp": art_piece.timestamp.isoformat()
+        }), 200
+    return jsonify({"message": "Art piece not found!"}), 404
+
+@app.route('/all_art', methods=['GET'])
+def all_art():
+    art_pieces = ArtPiece.query.all()
+    pieces = [
+        {
+            "id": art.id,
+            "title": art.title,
+            "artist": art.artist,
+            "year": art.year,
+            "owner": art.owner,
+            "timestamp": art.timestamp.isoformat()
+        } for art in art_pieces
+    ]
+    return jsonify(pieces), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)

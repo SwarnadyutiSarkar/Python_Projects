@@ -1,0 +1,83 @@
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///real_estate_rentals.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+class Rental(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    property_name = db.Column(db.String(100), nullable=False)
+    owner = db.Column(db.String(100), nullable=False)
+    price_per_night = db.Column(db.Float, nullable=False)
+    available_from = db.Column(db.DateTime, nullable=False)
+    available_to = db.Column(db.DateTime, nullable=False)
+    booked = db.Column(db.Boolean, default=False)
+
+    def __repr__(self):
+        return f'<Rental {self.property_name}>'
+
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
+@app.route('/list_property', methods=['POST'])
+def list_property():
+    data = request.json
+    rental = Rental(
+        property_name=data['property_name'],
+        owner=data['owner'],
+        price_per_night=data['price_per_night'],
+        available_from=datetime.fromisoformat(data['available_from']),
+        available_to=datetime.fromisoformat(data['available_to'])
+    )
+    db.session.add(rental)
+    db.session.commit()
+    return jsonify({"message": "Property listed successfully!"}), 201
+
+@app.route('/book_property/<int:rental_id>', methods=['POST'])
+def book_property(rental_id):
+    rental = Rental.query.get(rental_id)
+    if not rental:
+        return jsonify({"message": "Rental not found!"}), 404
+    if rental.booked:
+        return jsonify({"message": "Property is already booked!"}), 400
+    rental.booked = True
+    db.session.commit()
+    return jsonify({"message": f"Property {rental.property_name} booked successfully!"}), 200
+
+@app.route('/properties', methods=['GET'])
+def get_properties():
+    rentals = Rental.query.all()
+    properties = [
+        {
+            "id": rental.id,
+            "property_name": rental.property_name,
+            "owner": rental.owner,
+            "price_per_night": rental.price_per_night,
+            "available_from": rental.available_from.isoformat(),
+            "available_to": rental.available_to.isoformat(),
+            "booked": rental.booked
+        } for rental in rentals
+    ]
+    return jsonify(properties), 200
+
+@app.route('/property/<int:rental_id>', methods=['GET'])
+def get_property(rental_id):
+    rental = Rental.query.get(rental_id)
+    if rental:
+        return jsonify({
+            "id": rental.id,
+            "property_name": rental.property_name,
+            "owner": rental.owner,
+            "price_per_night": rental.price_per_night,
+            "available_from": rental.available_from.isoformat(),
+            "available_to": rental.available_to.isoformat(),
+            "booked": rental.booked
+        }), 200
+    return jsonify({"message": "Rental not found!"}), 404
+
+if __name__ == '__main__':
+    app.run(debug=True)

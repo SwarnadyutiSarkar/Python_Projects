@@ -1,0 +1,63 @@
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///loyalty_points.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    points = db.Column(db.Integer, default=0)
+
+    def __repr__(self):
+        return f'<User {self.username}>'
+
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
+@app.route('/register', methods=['POST'])
+def register():
+    username = request.json.get('username')
+    if User.query.filter_by(username=username).first():
+        return jsonify({"message": "User already exists!"}), 400
+    new_user = User(username=username)
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({"message": "User registered successfully!"}), 201
+
+@app.route('/earn_points', methods=['POST'])
+def earn_points():
+    username = request.json.get('username')
+    points = request.json.get('points')
+    user = User.query.filter_by(username=username).first()
+    if user:
+        user.points += points
+        db.session.commit()
+        return jsonify({"message": f"{points} points added to {username}!"}), 200
+    return jsonify({"message": "User not found!"}), 404
+
+@app.route('/exchange_points', methods=['POST'])
+def exchange_points():
+    username = request.json.get('username')
+    points = request.json.get('points')
+    user = User.query.filter_by(username=username).first()
+    if user:
+        if user.points >= points:
+            user.points -= points
+            db.session.commit()
+            return jsonify({"message": f"{points} points exchanged by {username}!"}), 200
+        return jsonify({"message": "Insufficient points!"}), 400
+    return jsonify({"message": "User not found!"}), 404
+
+@app.route('/points/<username>', methods=['GET'])
+def get_points(username):
+    user = User.query.filter_by(username=username).first()
+    if user:
+        return jsonify({"username": username, "points": user.points}), 200
+    return jsonify({"message": "User not found!"}), 404
+
+if __name__ == '__main__':
+    app.run(debug=True)
