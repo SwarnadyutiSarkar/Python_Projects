@@ -1,0 +1,55 @@
+import requests
+from bs4 import BeautifulSoup
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from collections import Counter
+
+# Ensure you have the required NLTK resources
+nltk.download('punkt')
+nltk.download('stopwords')
+
+class NewsVerificationSystem:
+    def __init__(self, news_url):
+        self.news_url = news_url
+        self.article_content = ''
+    
+    def fetch_article(self):
+        response = requests.get(self.news_url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            # Assuming the article text is contained in <p> tags
+            paragraphs = soup.find_all('p')
+            self.article_content = ' '.join([para.get_text() for para in paragraphs])
+        else:
+            print("Failed to fetch article")
+    
+    def preprocess_text(self):
+        tokens = word_tokenize(self.article_content.lower())
+        stop_words = set(stopwords.words('english'))
+        filtered_words = [word for word in tokens if word.isalnum() and word not in stop_words]
+        return filtered_words
+    
+    def get_word_frequency(self):
+        words = self.preprocess_text()
+        return Counter(words)
+    
+    def verify_article(self):
+        # Simple heuristic for verification (you can enhance this logic)
+        word_freq = self.get_word_frequency()
+        common_words = word_freq.most_common(10)
+        print("Most common words in the article:")
+        for word, freq in common_words:
+            print(f"{word}: {freq}")
+        
+        # Dummy verification logic (just for demonstration)
+        if 'breaking' in word_freq or 'exclusive' in word_freq:
+            print("Article might be sensational. Verify with trusted sources!")
+        else:
+            print("Article seems normal. Further verification recommended.")
+
+if __name__ == "__main__":
+    url = input("Enter the news article URL: ")
+    verifier = NewsVerificationSystem(url)
+    verifier.fetch_article()
+    verifier.verify_article()
