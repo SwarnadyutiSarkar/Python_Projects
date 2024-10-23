@@ -1,0 +1,62 @@
+class Investment:
+    def __init__(self, name, amount, impact_score):
+        self.name = name
+        self.amount = amount
+        self.impact_score = impact_score
+
+    def __str__(self):
+        return f"{self.name}: Amount Invested: ${self.amount}, Impact Score: {self.impact_score}"
+
+class Portfolio:
+    def __init__(self):
+        self.investments = []
+
+    def add_investment(self, investment):
+        self.investments.append(investment)
+
+    def total_investment(self):
+        return sum(investment.amount for investment in self.investments)
+
+    def average_impact_score(self):
+        if not self.investments:
+            return 0
+        return sum(investment.impact_score for investment in self.investments) / len(self.investments)
+
+    def __str__(self):
+        return '\n'.join(str(investment) for investment in self.investments)
+
+def main():
+    portfolio = Portfolio()
+
+    while True:
+        print("\nSocial Impact Investing Portfolio")
+        print("1. Add Investment")
+        print("2. View Portfolio")
+        print("3. View Total Investment")
+        print("4. View Average Impact Score")
+        print("5. Exit")
+
+        choice = input("Select an option: ")
+
+        if choice == '1':
+            name = input("Enter the investment name: ")
+            amount = float(input("Enter the amount invested: "))
+            impact_score = float(input("Enter the impact score (0-10): "))
+            investment = Investment(name, amount, impact_score)
+            portfolio.add_investment(investment)
+            print("Investment added.")
+        elif choice == '2':
+            print("\nYour Portfolio:")
+            print(portfolio)
+        elif choice == '3':
+            print(f"Total Investment: ${portfolio.total_investment()}")
+        elif choice == '4':
+            print(f"Average Impact Score: {portfolio.average_impact_score()}")
+        elif choice == '5':
+            print("Exiting.")
+            break
+        else:
+            print("Invalid option. Please try again.")
+
+if __name__ == "__main__":
+    main()
