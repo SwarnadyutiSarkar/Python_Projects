@@ -1,0 +1,64 @@
+class Payment:
+    def __init__(self, sender, recipient, amount, currency, exchange_rate):
+        self.sender = sender
+        self.recipient = recipient
+        self.amount = amount
+        self.currency = currency
+        self.exchange_rate = exchange_rate
+        self.fee = self.calculate_fee()
+    
+    def calculate_fee(self):
+        return self.amount * 0.02  # Assuming a 2% transaction fee
+
+    def total_cost(self):
+        return self.amount + self.fee
+
+    def __str__(self):
+        return (f"Payment from {self.sender} to {self.recipient}: "
+                f"{self.amount} {self.currency} (Fee: {self.fee:.2f} {self.currency}) "
+                f"Total Cost: {self.total_cost():.2f} {self.currency}")
+
+class PaymentSystem:
+    def __init__(self):
+        self.payments = []
+
+    def create_payment(self, sender, recipient, amount, currency, exchange_rate):
+        payment = Payment(sender, recipient, amount, currency, exchange_rate)
+        self.payments.append(payment)
+        print("Payment created successfully.")
+
+    def view_payments(self):
+        if not self.payments:
+            print("No payments found.")
+        else:
+            for payment in self.payments:
+                print(payment)
+
+def main():
+    payment_system = PaymentSystem()
+
+    while True:
+        print("\nCross-Border Payment System")
+        print("1. Create Payment")
+        print("2. View Payment History")
+        print("3. Exit")
+
+        choice = input("Select an option: ")
+
+        if choice == '1':
+            sender = input("Enter sender's name: ")
+            recipient = input("Enter recipient's name: ")
+            amount = float(input("Enter amount: "))
+            currency = input("Enter currency: ")
+            exchange_rate = float(input("Enter exchange rate (if applicable): "))  # Not used in calculations for now
+            payment_system.create_payment(sender, recipient, amount, currency, exchange_rate)
+        elif choice == '2':
+            payment_system.view_payments()
+        elif choice == '3':
+            print("Exiting.")
+            break
+        else:
+            print("Invalid option. Please try again.")
+
+if __name__ == "__main__":
+    main()
