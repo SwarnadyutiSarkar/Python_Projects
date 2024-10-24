@@ -1,0 +1,90 @@
+from flask import Flask, request, jsonify
+import hashlib
+import json
+from time import time
+
+app = Flask(__name__)
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.current_tickets = []
+        self.new_block(previous_hash='1', proof=100)
+
+    def new_block(self, proof, previous_hash=None):
+        block = {
+            'index': len(self.chain) + 1,
+            'timestamp': time(),
+            'tickets': self.current_tickets,
+            'proof': proof,
+            'previous_hash': previous_hash or self.hash(self.chain[-1]),
+        }
+        self.current_tickets = []
+        self.chain.append(block)
+        return block
+
+    def new_ticket(self, event_name, buyer, ticket_id):
+        self.current_tickets.append({
+            'event_name': event_name,
+            'buyer': buyer,
+            'ticket_id': ticket_id,
+        })
+        return self.last_block['index'] + 1
+
+    @staticmethod
+    def hash(block):
+        block_string = json.dumps(block, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+    @property
+    def last_block(self):
+        return self.chain[-1]
+
+# Initialize blockchain
+blockchain = Blockchain()
+
+@app.route('/ticket/new', methods=['POST'])
+def new_ticket():
+    data = request.get_json()
+    required_fields = ['event_name', 'buyer', 'ticket_id']
+    if not all(field in data for field in required_fields):
+        return 'Missing values', 400
+
+    index = blockchain.new_ticket(data['event_name'], data['buyer'], data['ticket_id'])
+    response = {'message': f'Ticket will be added to Block {index}'}
+    return jsonify(response), 201
+
+@app.route('/mine', methods=['GET'])
+def mine():
+    last_block = blockchain.last_block
+    proof = 100  # Placeholder for proof of work
+    blockchain.new_block(proof)
+
+    response = {
+        'message': 'New Block Forged',
+        'index': last_block['index'] + 1,
+        'tickets': last_block['tickets'],
+        'proof': proof,
+        'previous_hash': blockchain.hash(last_block),
+    }
+    return jsonify(response), 200
+
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    response = {
+        'chain': blockchain.chain,
+        'length': len(blockchain.chain),
+    }
+    return jsonify(response), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+---------------------------------------
+addPOST http://127.0.0.1:5000/ticket/new
+{
+    "event_name": "Concert",
+    "buyer": "user@example.com",
+    "ticket_id": "TICKET12345"
+}
+ a  ticket
