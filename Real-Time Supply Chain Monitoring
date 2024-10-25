@@ -1,0 +1,109 @@
+# app.py
+from flask import Flask, jsonify, request
+from flask_socketio import SocketIO
+import pandas as pd
+import random
+import time
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+# Sample data for supply chain
+supply_chain_data = {
+    'products': [
+        {'id': 1, 'name': 'Product A', 'location': 'Warehouse 1', 'status': 'In Transit'},
+        {'id': 2, 'name': 'Product B', 'location': 'Warehouse 2', 'status': 'In Stock'},
+        {'id': 3, 'name': 'Product C', 'location': 'Warehouse 3', 'status': 'Delivered'},
+    ]
+}
+
+@app.route('/update', methods=['POST'])
+def update_status():
+    data = request.get_json()
+    product_id = data.get('id')
+    new_status = data.get('status')
+
+    for product in supply_chain_data['products']:
+        if product['id'] == product_id:
+            product['status'] = new_status
+            socketio.emit('status_update', product)
+            break
+
+    return jsonify({'message': 'Status updated'}), 200
+
+@app.route('/data', methods=['GET'])
+def get_data():
+    return jsonify(supply_chain_data), 200
+
+def simulate_updates():
+    while True:
+        time.sleep(5)
+        product = random.choice(supply_chain_data['products'])
+        new_status = random.choice(['In Transit', 'Delivered', 'In Stock', 'Delayed'])
+        product['status'] = new_status
+        socketio.emit('status_update', product)
+
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+if __name__ == '__main__':
+    socketio.start_background_task(target=simulate_updates)
+    socketio.run(app, host='0.0.0.0', port=5000)
+-----------------------------------------------------------
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Supply Chain Monitoring</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Supply Chain Monitoring</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Product ID</th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="supplyChainTable"></tbody>
+    </table>
+
+    <script>
+        const socket = io('http://localhost:5000');
+
+        socket.on('status_update', (product) => {
+            const tableRow = document.getElementById('supplyChainTable').querySelector(`tr[data-id='${product.id}']`);
+            if (tableRow) {
+                tableRow.children[3].innerText = product.status;
+            } else {
+                const newRow = document.createElement('tr');
+                newRow.setAttribute('data-id', product.id);
+                newRow.innerHTML = `<td>${product.id}</td><td>${product.name}</td><td>${product.location}</td><td>${product.status}</td>`;
+                document.getElementById('supplyChainTable').appendChild(newRow);
+            }
+        });
+
+        fetch('http://localhost:5000/data')
+            .then(response => response.json())
+            .then(data => {
+                data.products.forEach(product => {
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-id', product.id);
+                    row.innerHTML = `<td>${product.id}</td><td>${product.name}</td><td>${product.location}</td><td>${product.status}</td>`;
+                    document.getElementById('supplyChainTable').appendChild(row);
+                });
+            });
+    </script>
+</body>
+</html>
