@@ -1,0 +1,66 @@
+from flask import Flask, jsonify, request
+import hashlib
+import json
+from time import time
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.current_votes = []
+        self.new_block(previous_hash='1', proof=100)
+
+    def new_block(self, proof, previous_hash=None):
+        block = {
+            'index': len(self.chain) + 1,
+            'timestamp': time(),
+            'votes': self.current_votes,
+            'previous_hash': previous_hash or self.hash(self.chain[-1]),
+        }
+        self.current_votes = []
+        self.chain.append(block)
+        return block
+
+    def new_vote(self, voter, proposal):
+        self.current_votes.append({'voter': voter, 'proposal': proposal})
+        return self.last_block['index'] + 1
+
+    @staticmethod
+    def hash(block):
+        block_string = json.dumps(block, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+    @property
+    def last_block(self):
+        return self.chain[-1]
+
+app = Flask(__name__)
+voting_system = Blockchain()
+
+@app.route('/vote', methods=['POST'])
+def vote():
+    data = request.get_json()
+    required = ['voter', 'proposal']
+    if not all(k in data for k in required):
+        return 'Missing values', 400
+
+    voting_system.new_vote(data['voter'], data['proposal'])
+    return jsonify({'message': 'Vote has been recorded'}), 201
+
+@app.route('/mine', methods=['GET'])
+def mine():
+    previous_hash = voting_system.hash(voting_system.last_block)
+    block = voting_system.new_block(1, previous_hash)
+    response = {
+        'message': 'New block mined',
+        'index': block['index'],
+        'votes': block['votes'],
+        'previous_hash': block['previous_hash'],
+    }
+    return jsonify(response), 200
+
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    return jsonify(voting_system.chain), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
