@@ -1,0 +1,118 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract RealEstateRegistry {
+    struct Property {
+        uint id;
+        string description;
+        address owner;
+        string vrTourLink;
+        bool forSale;
+        uint price;
+    }
+
+    mapping(uint => Property) public properties;
+    uint public propertyCount;
+
+    event PropertyListed(uint id, string description, address owner, uint price);
+    event PropertySold(uint id, address newOwner, uint price);
+
+    function listProperty(string memory description, string memory vrTourLink, uint price) public {
+        propertyCount++;
+        properties[propertyCount] = Property(propertyCount, description, msg.sender, vrTourLink, true, price);
+        emit PropertyListed(propertyCount, description, msg.sender, price);
+    }
+
+    function buyProperty(uint id) public payable {
+        Property storage property = properties[id];
+        require(property.forSale, "Property is not for sale");
+        require(msg.value >= property.price, "Insufficient funds");
+
+        // Transfer ownership
+        property.owner = msg.sender;
+        property.forSale = false;
+
+        // Transfer funds (basic transfer)
+        payable(property.owner).transfer(msg.value);
+        
+        emit PropertySold(id, msg.sender, msg.value);
+    }
+
+    function getProperty(uint id) public view returns (Property memory) {
+        return properties[id];
+    }
+}
+
+---------------------------------------------------------
+html
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>VR Real Estate Tour</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  </head>
+  <body>
+    <a-scene>
+      <a-sky src="path_to_your_sky_image.jpg"></a-sky>
+      <a-assets>
+        <img id="property-image" src="path_to_your_property_image.jpg">
+      </a-assets>
+      <a-image src="#property-image" position="0 1.6 -3" rotation="0 0 0" scale="1 1 1"></a-image>
+      <a-camera position="0 1.6 0"></a-camera>
+    </a-scene>
+  </body>
+</html>
+---------------------------------------------------
+user interface
+import React, { useState, useEffect } from 'react';
+import Web3 from 'web3';
+import RealEstateRegistry from './RealEstateRegistry.json'; // ABI file
+
+const App = () => {
+  const [account, setAccount] = useState('');
+  const [properties, setProperties] = useState([]);
+  const [contract, setContract] = useState(null);
+
+  useEffect(() => {
+    const loadBlockchainData = async () => {
+      const web3 = new Web3(Web3.givenProvider || "http://localhost:7545");
+      const accounts = await web3.eth.getAccounts();
+      const networkId = await web3.eth.net.getId();
+      const deployedNetwork = RealEstateRegistry.networks[networkId];
+      const instance = new web3.eth.Contract(RealEstateRegistry.abi, deployedNetwork && deployedNetwork.address);
+      
+      setAccount(accounts[0]);
+      setContract(instance);
+      loadProperties(instance);
+    };
+
+    loadBlockchainData();
+  }, []);
+
+  const loadProperties = async (contract) => {
+    const count = await contract.methods.propertyCount().call();
+    const props = [];
+    for (let i = 1; i <= count; i++) {
+      const property = await contract.methods.getProperty(i).call();
+      props.push(property);
+    }
+    setProperties(props);
+  };
+
+  return (
+    <div>
+      <h1>Virtual Real Estate Tours</h1>
+      <h2>Your Account: {account}</h2>
+      <ul>
+        {properties.map((property) => (
+          <li key={property.id}>
+            {property.description} - Owner: {property.owner}
+            <a href={property.vrTourLink} target="_blank"> VR Tour</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default App;
