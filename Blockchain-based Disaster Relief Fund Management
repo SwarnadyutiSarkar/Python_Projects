@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DisasterReliefFund {
+    // State variables
+    mapping(address => uint) public donations;
+    mapping(uint => ReliefRequest) public reliefRequests;
+    uint public totalFunds;
+    uint public requestCount;
+    address public manager;
+
+    // Structure to represent a relief request
+    struct ReliefRequest {
+        uint id;
+        string description;
+        uint amountRequested;
+        address requester;
+        bool approved;
+        bool completed;
+    }
+
+    // Event declarations
+    event DonationReceived(address indexed donor, uint amount);
+    event ReliefRequestCreated(uint id, string description, uint amountRequested, address indexed requester);
+    event RequestApproved(uint id);
+    event FundsDistributed(uint id, address indexed recipient, uint amount);
+
+    // Constructor to initialize the contract
+    constructor() {
+        manager = msg.sender; // Set the contract deployer as the manager
+        requestCount = 0;
+        totalFunds = 0;
+    }
+
+    // Function to donate to the fund
+    function donate() public payable {
+        require(msg.value > 0, "Donation must be greater than 0");
+        donations[msg.sender] += msg.value;
+        totalFunds += msg.value;
+        emit DonationReceived(msg.sender, msg.value);
+    }
+
+    // Function to create a relief request
+    function createReliefRequest(string memory description, uint amountRequested) public {
+        require(amountRequested <= totalFunds, "Not enough funds available");
+        requestCount++;
+        reliefRequests[requestCount] = ReliefRequest(requestCount, description, amountRequested, msg.sender, false, false);
+        emit ReliefRequestCreated(requestCount, description, amountRequested, msg.sender);
+    }
+
+    // Function to approve a relief request
+    function approveReliefRequest(uint id) public {
+        require(msg.sender == manager, "Only the manager can approve requests");
+        require(!reliefRequests[id].approved, "Request already approved");
+        
+        reliefRequests[id].approved = true;
+        emit RequestApproved(id);
+    }
+
+    // Function to distribute funds for an approved request
+    function distributeFunds(uint id) public {
+        require(msg.sender == manager, "Only the manager can distribute funds");
+        require(reliefRequests[id].approved, "Request not approved");
+        require(!reliefRequests[id].completed, "Request already completed");
+        
+        address recipient = reliefRequests[id].requester;
+        uint amount = reliefRequests[id].amountRequested;
+
+        require(totalFunds >= amount, "Not enough funds available");
+
+        totalFunds -= amount;
+        payable(recipient).transfer(amount);
+        reliefRequests[id].completed = true;
+
+        emit FundsDistributed(id, recipient, amount);
+    }
+
+    // Function to get the total funds
+    function getTotalFunds() public view returns (uint) {
+        return totalFunds;
+    }
+
+    // Function to get details of a relief request
+    function getReliefRequest(uint id) public view returns (ReliefRequest memory) {
+        return reliefRequests[id];
+    }
+}
