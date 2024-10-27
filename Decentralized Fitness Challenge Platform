@@ -1,0 +1,105 @@
+SOLIDITY
+------------------------------------------------------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract FitnessChallenge {
+    struct Challenge {
+        uint id;
+        string name;
+        uint reward;
+        address creator;
+        bool isActive;
+        mapping(address => bool) participants;
+    }
+
+    mapping(uint => Challenge) public challenges;
+    uint public challengeCount;
+
+    event ChallengeCreated(uint id, string name, uint reward, address creator);
+    event Participated(uint challengeId, address participant);
+
+    function createChallenge(string memory name, uint reward) public {
+        challengeCount++;
+        Challenge storage newChallenge = challenges[challengeCount];
+        newChallenge.id = challengeCount;
+        newChallenge.name = name;
+        newChallenge.reward = reward;
+        newChallenge.creator = msg.sender;
+        newChallenge.isActive = true;
+
+        emit ChallengeCreated(challengeCount, name, reward, msg.sender);
+    }
+
+    function participate(uint challengeId) public {
+        require(challenges[challengeId].isActive, "Challenge is not active");
+        require(!challenges[challengeId].participants[msg.sender], "Already participated");
+
+        challenges[challengeId].participants[msg.sender] = true;
+
+        emit Participated(challengeId, msg.sender);
+    }
+
+    function endChallenge(uint challengeId) public {
+        require(msg.sender == challenges[challengeId].creator, "Only creator can end the challenge");
+        challenges[challengeId].isActive = false;
+    }
+}
+--------------------------------------------------
+HTML + JS
+----------------------------------------------------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decentralized Fitness Challenge</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Decentralized Fitness Challenge</h1>
+    <div>
+        <h2>Create Challenge</h2>
+        <input id="challengeName" placeholder="Challenge Name">
+        <input id="reward" type="number" placeholder="Reward (in Wei)">
+        <button onclick="createChallenge()">Create Challenge</button>
+    </div>
+    <div>
+        <h2>Participate in Challenge</h2>
+        <input id="challengeId" type="number" placeholder="Challenge ID">
+        <button onclick="participate()">Participate</button>
+    </div>
+    <script>
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+        const abi = [
+            // ABI array goes here
+        ];
+
+        let web3;
+        let contract;
+
+        window.onload = async () => {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                await ethereum.request({ method: 'eth_requestAccounts' });
+                contract = new web3.eth.Contract(abi, contractAddress);
+            } else {
+                alert('Please install MetaMask!');
+            }
+        };
+
+        async function createChallenge() {
+            const name = document.getElementById('challengeName').value;
+            const reward = document.getElementById('reward').value;
+            const accounts = await web3.eth.getAccounts();
+            await contract.methods.createChallenge(name, reward).send({ from: accounts[0] });
+        }
+
+        async function participate() {
+            const id = document.getElementById('challengeId').value;
+            const accounts = await web3.eth.getAccounts();
+            await contract.methods.participate(id).send({ from: accounts[0] });
+        }
+    </script>
+</body>
+</html>
