@@ -1,0 +1,118 @@
+SOLIDITY
+-------------------------------------------------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract ResearchFunding {
+    struct Proposal {
+        uint id;
+        string title;
+        string description;
+        address payable researcher;
+        uint fundingGoal;
+        uint fundsRaised;
+        bool isActive;
+        uint voteCount;
+    }
+
+    mapping(uint => Proposal) public proposals;
+    uint public proposalCount;
+
+    event ProposalCreated(uint id, string title, address researcher, uint fundingGoal);
+    event FundsReceived(uint proposalId, uint amount);
+    event ProposalVoted(uint proposalId, uint voteCount);
+
+    function createProposal(string memory title, string memory description, uint fundingGoal) public {
+        proposalCount++;
+        proposals[proposalCount] = Proposal(proposalCount, title, description, payable(msg.sender), fundingGoal, 0, true, 0);
+        emit ProposalCreated(proposalCount, title, msg.sender, fundingGoal);
+    }
+
+    function fundProposal(uint proposalId) public payable {
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.isActive, "Proposal is not active");
+        require(msg.value > 0, "Must send Ether to fund");
+
+        proposal.fundsRaised += msg.value;
+        emit FundsReceived(proposalId, msg.value);
+    }
+
+    function vote(uint proposalId) public {
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.isActive, "Proposal is not active");
+        
+        proposal.voteCount++;
+        emit ProposalVoted(proposalId, proposal.voteCount);
+    }
+
+    function withdrawFunds(uint proposalId) public {
+        Proposal storage proposal = proposals[proposalId];
+        require(msg.sender == proposal.researcher, "Only researcher can withdraw funds");
+        require(proposal.fundsRaised >= proposal.fundingGoal, "Funding goal not reached");
+
+        proposal.isActive = false;
+        proposal.researcher.transfer(proposal.fundsRaised);
+    }
+}
+-----------------------------------------------------
+HTML + JS
+-----------------------------------------------------------------------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Funding Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Research Funding Platform</h1>
+    <div>
+        <h2>Create Proposal</h2>
+        <input id="title" placeholder="Proposal Title">
+        <textarea id="description" placeholder="Proposal Description"></textarea>
+        <input id="fundingGoal" type="number" placeholder="Funding Goal (in Wei)">
+        <button onclick="createProposal()">Create Proposal</button>
+    </div>
+    <div>
+        <h2>Fund Proposal</h2>
+        <input id="proposalId" type="number" placeholder="Proposal ID">
+        <input id="amount" type="number" placeholder="Amount (in Wei)">
+        <button onclick="fundProposal()">Fund Proposal</button>
+    </div>
+    <script>
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+        const abi = [
+            // ABI array goes here
+        ];
+
+        let web3;
+        let contract;
+
+        window.onload = async () => {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                await ethereum.request({ method: 'eth_requestAccounts' });
+                contract = new web3.eth.Contract(abi, contractAddress);
+            } else {
+                alert('Please install MetaMask!');
+            }
+        };
+
+        async function createProposal() {
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const fundingGoal = document.getElementById('fundingGoal').value;
+            const accounts = await web3.eth.getAccounts();
+            await contract.methods.createProposal(title, description, fundingGoal).send({ from: accounts[0] });
+        }
+
+        async function fundProposal() {
+            const proposalId = document.getElementById('proposalId').value;
+            const amount = document.getElementById('amount').value;
+            const accounts = await web3.eth.getAccounts();
+            await contract.methods.fundProposal(proposalId).send({ from: accounts[0], value: amount });
+        }
+    </script>
+</body>
+</html>
