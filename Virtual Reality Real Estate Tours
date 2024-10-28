@@ -1,0 +1,113 @@
+# app.py (Backend using Flask)
+from flask import Flask, request, jsonify, render_template
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///properties.db'
+db = SQLAlchemy(app)
+
+class Property(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    owner = db.Column(db.String(50), nullable=False)
+    address = db.Column(db.String(100), nullable=False)
+    vr_url = db.Column(db.String(200), nullable=False)
+
+@app.route('/')
+def index():
+    properties = Property.query.all()
+    return render_template('index.html', properties=properties)
+
+@app.route('/add_property', methods=['POST'])
+def add_property():
+    data = request.json
+    new_property = Property(owner=data['owner'], address=data['address'], vr_url=data['vr_url'])
+    db.session.add(new_property)
+    db.session.commit()
+    return jsonify({'message': 'Property added!'}), 201
+
+@app.route('/get_properties', methods=['GET'])
+def get_properties():
+    properties = Property.query.all()
+    return jsonify([{ 'id': p.id, 'owner': p.owner, 'address': p.address, 'vr_url': p.vr_url } for p in properties])
+
+# Placeholder for blockchain interaction
+@app.route('/register_property/<int:property_id>', methods=['POST'])
+def register_property_on_blockchain(property_id):
+    # Here, you would interact with your blockchain (e.g., Ethereum)
+    return jsonify({'message': f'Property {property_id} registered on blockchain!'}), 200
+
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
+
+------------------------
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR Real Estate Tours</title>
+</head>
+<body>
+    <h1>Virtual Reality Real Estate Tours</h1>
+    <ul id="propertyList"></ul>
+
+    <h2>Add Property</h2>
+    <form id="addPropertyForm">
+        <input type="text" id="owner" placeholder="Owner" required>
+        <input type="text" id="address" placeholder="Address" required>
+        <input type="text" id="vr_url" placeholder="VR Tour URL" required>
+        <button type="submit">Add Property</button>
+    </form>
+
+    <script>
+        document.getElementById('addPropertyForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const owner = document.getElementById('owner').value;
+            const address = document.getElementById('address').value;
+            const vr_url = document.getElementById('vr_url').value;
+
+            const response = await fetch('/add_property', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ owner, address, vr_url })
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            }
+        };
+
+        async function loadProperties() {
+            const response = await fetch('/get_properties');
+            const properties = await response.json();
+            const propertyList = document.getElementById('propertyList');
+
+            properties.forEach(property => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `${property.address} - Owned by ${property.owner} 
+                <a href="${property.vr_url}" target="_blank">View VR Tour</a>
+                <button onclick="registerOnBlockchain(${property.id})">Register on Blockchain</button>`;
+                propertyList.appendChild(listItem);
+            });
+        }
+
+        async function registerOnBlockchain(propertyId) {
+            const response = await fetch(`/register_property/${propertyId}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                alert('Property registered on blockchain!');
+            } else {
+                alert('Error registering property!');
+            }
+        }
+
+        window.onload = loadProperties;
+    </script>
+</body>
+</html>
