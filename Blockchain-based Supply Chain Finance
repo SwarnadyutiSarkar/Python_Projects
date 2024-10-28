@@ -1,0 +1,116 @@
+# app.py (Backend using Flask)
+from flask import Flask, request, jsonify, render_template
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///supply_chain.db'
+db = SQLAlchemy(app)
+
+class Transaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    supplier = db.Column(db.String(50), nullable=False)
+    finance_provider = db.Column(db.String(50), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(20), default='Pending')
+
+@app.route('/')
+def index():
+    transactions = Transaction.query.all()
+    return render_template('index.html', transactions=transactions)
+
+@app.route('/add_transaction', methods=['POST'])
+def add_transaction():
+    data = request.json
+    new_transaction = Transaction(
+        supplier=data['supplier'],
+        finance_provider=data['finance_provider'],
+        amount=data['amount']
+    )
+    db.session.add(new_transaction)
+    db.session.commit()
+    return jsonify({'message': 'Transaction added!'}), 201
+
+@app.route('/get_transactions', methods=['GET'])
+def get_transactions():
+    transactions = Transaction.query.all()
+    return jsonify([{ 'id': t.id, 'supplier': t.supplier, 'finance_provider': t.finance_provider, 'amount': t.amount, 'status': t.status } for t in transactions])
+
+# Placeholder for blockchain interaction
+@app.route('/register_transaction/<int:transaction_id>', methods=['POST'])
+def register_transaction_on_blockchain(transaction_id):
+    # Here, you would interact with your blockchain (e.g., Ethereum)
+    return jsonify({'message': f'Transaction {transaction_id} registered on blockchain!'}), 200
+
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
+---------------------
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supply Chain Finance</title>
+</head>
+<body>
+    <h1>Blockchain-based Supply Chain Finance</h1>
+    <ul id="transactionList"></ul>
+
+    <h2>Add Transaction</h2>
+    <form id="addTransactionForm">
+        <input type="text" id="supplier" placeholder="Supplier" required>
+        <input type="text" id="finance_provider" placeholder="Finance Provider" required>
+        <input type="number" id="amount" placeholder="Amount" required step="0.01">
+        <button type="submit">Add Transaction</button>
+    </form>
+
+    <script>
+        document.getElementById('addTransactionForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const supplier = document.getElementById('supplier').value;
+            const finance_provider = document.getElementById('finance_provider').value;
+            const amount = document.getElementById('amount').value;
+
+            const response = await fetch('/add_transaction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ supplier, finance_provider, amount })
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            }
+        };
+
+        async function loadTransactions() {
+            const response = await fetch('/get_transactions');
+            const transactions = await response.json();
+            const transactionList = document.getElementById('transactionList');
+
+            transactions.forEach(transaction => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `Transaction ${transaction.id}: ${transaction.supplier} - ${transaction.finance_provider} - $${transaction.amount} (${transaction.status}) 
+                <button onclick="registerOnBlockchain(${transaction.id})">Register on Blockchain</button>`;
+                transactionList.appendChild(listItem);
+            });
+        }
+
+        async function registerOnBlockchain(transactionId) {
+            const response = await fetch(`/register_transaction/${transactionId}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                alert('Transaction registered on blockchain!');
+            } else {
+                alert('Error registering transaction!');
+            }
+        }
+
+        window.onload = loadTransactions;
+    </script>
+</body>
+</html>

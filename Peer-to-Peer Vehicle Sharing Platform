@@ -1,0 +1,108 @@
+app.py
+----------------
+# app.py (Backend using Flask)
+from flask import Flask, request, jsonify, render_template
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vehicles.db'
+db = SQLAlchemy(app)
+
+class Vehicle(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    owner = db.Column(db.String(50), nullable=False)
+    model = db.Column(db.String(50), nullable=False)
+    location = db.Column(db.String(100), nullable=False)
+    available = db.Column(db.Boolean, default=True)
+
+@app.route('/')
+def index():
+    vehicles = Vehicle.query.all()
+    return render_template('index.html', vehicles=vehicles)
+
+@app.route('/add_vehicle', methods=['POST'])
+def add_vehicle():
+    data = request.json
+    new_vehicle = Vehicle(owner=data['owner'], model=data['model'], location=data['location'])
+    db.session.add(new_vehicle)
+    db.session.commit()
+    return jsonify({'message': 'Vehicle added!'}), 201
+
+@app.route('/book_vehicle/<int:vehicle_id>', methods=['POST'])
+def book_vehicle(vehicle_id):
+    vehicle = Vehicle.query.get(vehicle_id)
+    if vehicle and vehicle.available:
+        vehicle.available = False
+        db.session.commit()
+        return jsonify({'message': 'Vehicle booked!'}), 200
+    return jsonify({'message': 'Vehicle not available!'}), 400
+
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
+---------------------
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Sharing</title>
+</head>
+<body>
+    <h1>Available Vehicles</h1>
+    <ul>
+        {% for vehicle in vehicles %}
+            <li>
+                {{ vehicle.model }} - {{ vehicle.owner }} - Location: {{ vehicle.location }}
+                {% if vehicle.available %}
+                    <button onclick="bookVehicle({{ vehicle.id }})">Book</button>
+                {% else %}
+                    <span>Not available</span>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+
+    <h2>Add Vehicle</h2>
+    <form id="addVehicleForm">
+        <input type="text" id="owner" placeholder="Owner" required>
+        <input type="text" id="model" placeholder="Model" required>
+        <input type="text" id="location" placeholder="Location" required>
+        <button type="submit">Add Vehicle</button>
+    </form>
+
+    <script>
+        document.getElementById('addVehicleForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const owner = document.getElementById('owner').value;
+            const model = document.getElementById('model').value;
+            const location = document.getElementById('location').value;
+
+            const response = await fetch('/add_vehicle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ owner, model, location })
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            }
+        };
+
+        async function bookVehicle(vehicleId) {
+            const response = await fetch(`/book_vehicle/${vehicleId}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Vehicle not available!');
+            }
+        }
+    </script>
+</body>
+</html>
