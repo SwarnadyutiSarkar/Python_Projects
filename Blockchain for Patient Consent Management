@@ -1,0 +1,69 @@
+Solidity Smart Contract (PatientConsent.sol)
+---------------------------------------------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract PatientConsent {
+    struct Consent {
+        address patient;
+        string consentDetails;
+        bool isGranted;
+        uint256 timestamp;
+    }
+
+    mapping(address => Consent[]) private consents;
+
+    event ConsentUpdated(address indexed patient, string consentDetails, bool isGranted, uint256 timestamp);
+
+    function giveConsent(string memory _details) public {
+        consents[msg.sender].push(Consent({
+            patient: msg.sender,
+            consentDetails: _details,
+            isGranted: true,
+            timestamp: block.timestamp
+        }));
+        emit ConsentUpdated(msg.sender, _details, true, block.timestamp);
+    }
+
+    function revokeConsent(uint256 index) public {
+        require(index < consents[msg.sender].length, "Invalid index");
+        consents[msg.sender][index].isGranted = false;
+        emit ConsentUpdated(msg.sender, consents[msg.sender][index].consentDetails, false, block.timestamp);
+    }
+
+    function getConsents(address _patient) public view returns (Consent[] memory) {
+        return consents[_patient];
+    }
+}
+------------------------------------------------------
+JavaScript Interaction (app.js)
+-------------------------------------------------------
+
+const Web3 = require('web3');
+const contractABI = [ /* ABI array from compiled contract */ ];
+const contractAddress = '0xYourContractAddressHere';
+
+const web3 = new Web3(Web3.givenProvider || 'http://localhost:8545');
+const patientConsentContract = new web3.eth.Contract(contractABI, contractAddress);
+
+async function giveConsent(details) {
+    const accounts = await web3.eth.getAccounts();
+    await patientConsentContract.methods.giveConsent(details).send({ from: accounts[0] });
+    console.log('Consent given:', details);
+}
+
+async function revokeConsent(index) {
+    const accounts = await web3.eth.getAccounts();
+    await patientConsentContract.methods.revokeConsent(index).send({ from: accounts[0] });
+    console.log('Consent revoked at index:', index);
+}
+
+async function getConsents(patientAddress) {
+    const consents = await patientConsentContract.methods.getConsents(patientAddress).call();
+    console.log('Consents for patient:', consents);
+}
+
+// Example usage:
+// giveConsent("I consent to share my medical data.");
+// revokeConsent(0);
+// getConsents("0xPatientAddressHere");
