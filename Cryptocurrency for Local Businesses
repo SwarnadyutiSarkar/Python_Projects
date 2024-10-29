@@ -1,0 +1,87 @@
+SOLIDITY
+--------------------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract LocalCurrency {
+    string public name = "LocalCurrency";
+    string public symbol = "LOC";
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(uint256 _initialSupply) {
+        totalSupply = _initialSupply * (10 ** uint256(decimals));
+        balanceOf[msg.sender] = totalSupply;
+    }
+
+    function transfer(address _to, uint256 _value) public returns (bool success) {
+        require(_to != address(0), "Invalid address");
+        require(balanceOf[msg.sender] >= _value, "Insufficient balance");
+
+        balanceOf[msg.sender] -= _value;
+        balanceOf[_to] += _value;
+        emit Transfer(msg.sender, _to, _value);
+        return true;
+    }
+
+    function approve(address _spender, uint256 _value) public returns (bool success) {
+        allowance[msg.sender][_spender] = _value;
+        emit Approval(msg.sender, _spender, _value);
+        return true;
+    }
+
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
+        require(_from != address(0), "Invalid address");
+        require(balanceOf[_from] >= _value, "Insufficient balance");
+        require(allowance[_from][msg.sender] >= _value, "Allowance exceeded");
+
+        balanceOf[_from] -= _value;
+        balanceOf[_to] += _value;
+        allowance[_from][msg.sender] -= _value;
+        emit Transfer(_from, _to, _value);
+        return true;
+    }
+}
+---------------------------------------------------
+JavaScript Interaction (app.js)
+-------------------------------------------------------------
+const Web3 = require('web3');
+const contractABI = [ /* ABI array from compiled contract */ ];
+const contractAddress = '0xYourContractAddressHere';
+
+const web3 = new Web3(Web3.givenProvider || 'http://localhost:8545');
+const localCurrencyContract = new web3.eth.Contract(contractABI, contractAddress);
+
+async function transferTokens(to, value) {
+    const accounts = await web3.eth.getAccounts();
+    await localCurrencyContract.methods.transfer(to, value).send({ from: accounts[0] });
+    console.log(`Transferred ${value} LOC to ${to}`);
+}
+
+async function approveSpender(spender, value) {
+    const accounts = await web3.eth.getAccounts();
+    await localCurrencyContract.methods.approve(spender, value).send({ from: accounts[0] });
+    console.log(`Approved ${spender} to spend ${value} LOC`);
+}
+
+async function transferFrom(from, to, value) {
+    const accounts = await web3.eth.getAccounts();
+    await localCurrencyContract.methods.transferFrom(from, to, value).send({ from: accounts[0] });
+    console.log(`Transferred ${value} LOC from ${from} to ${to}`);
+}
+
+async function getBalance(address) {
+    const balance = await localCurrencyContract.methods.balanceOf(address).call();
+    console.log(`Balance of ${address}: ${balance}`);
+}
+
+// Example usage:
+// transferTokens("0xRecipientAddressHere", 100);
+// approveSpender("0xSpenderAddressHere", 50);
+// transferFrom("0xFromAddressHere", "0xToAddressHere", 25);
+// getBalance("0xAddressToCheckBalance");
