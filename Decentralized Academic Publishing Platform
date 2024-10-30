@@ -1,0 +1,134 @@
+solidity
+---------------------------------------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract AcademicPublishing {
+    struct Paper {
+        string title;
+        string author;
+        string contentHash; // IPFS hash for the content
+        address[] reviewers;
+        uint256 reviewCount;
+        bool isPublished;
+    }
+
+    mapping(uint256 => Paper) public papers;
+    uint256 public paperCount;
+
+    event PaperSubmitted(uint256 indexed paperId, string title, string author);
+    event PaperReviewed(uint256 indexed paperId, address reviewer);
+    event PaperPublished(uint256 indexed paperId);
+
+    function submitPaper(string memory _title, string memory _author, string memory _contentHash) public {
+        papers[paperCount] = Paper({
+            title: _title,
+            author: _author,
+            contentHash: _contentHash,
+            reviewers: new address          reviewCount: 0,
+            isPublished: false
+        });
+
+        emit PaperSubmitted(paperCount, _title, _author);
+        paperCount++;
+    }
+
+    function reviewPaper(uint256 _paperId) public {
+        require(_paperId < paperCount, "Paper does not exist.");
+        require(!papers[_paperId].isPublished, "Paper already published.");
+        
+        papers[_paperId].reviewers.push(msg.sender);
+        papers[_paperId].reviewCount++;
+
+        emit PaperReviewed(_paperId, msg.sender);
+    }
+
+    function publishPaper(uint256 _paperId) public {
+        require(_paperId < paperCount, "Paper does not exist.");
+        require(papers[_paperId].reviewCount > 0, "No reviews for this paper.");
+
+        papers[_paperId].isPublished = true;
+        emit PaperPublished(_paperId);
+    }
+
+    function getPaper(uint256 _paperId) public view returns (string memory, string memory, string memory, uint256, bool) {
+        Paper memory paper = papers[_paperId];
+        return (paper.title, paper.author, paper.contentHash, paper.reviewCount, paper.isPublished);
+    }
+}
+-------------------------------------------------------------
+html + jss
+----------------------------------------------------------------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decentralized Academic Publishing</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Decentralized Academic Publishing Platform</h1>
+    
+    <h2>Submit Paper</h2>
+    <form id="submitForm">
+        <input type="text" id="paperTitle" placeholder="Title" required>
+        <input type="text" id="author" placeholder="Author" required>
+        <input type="text" id="contentHash" placeholder="IPFS Hash" required>
+        <button type="submit">Submit Paper</button>
+    </form>
+    
+    <h2>Review Paper</h2>
+    <form id="reviewForm">
+        <input type="number" id="paperId" placeholder="Paper ID" required>
+        <button type="submit">Review Paper</button>
+    </form>
+    
+    <h2>Publish Paper</h2>
+    <form id="publishForm">
+        <input type="number" id="publishPaperId" placeholder="Paper ID" required>
+        <button type="submit">Publish Paper</button>
+    </form>
+    
+    <div id="result"></div>
+
+    <script>
+        const web3 = new Web3(Web3.givenProvider || "http://localhost:8545");
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS_HERE';
+        const contractABI = [
+            // Your contract ABI here
+        ];
+
+        const academicContract = new web3.eth.Contract(contractABI, contractAddress);
+
+        document.getElementById('submitForm').onsubmit = async (event) => {
+            event.preventDefault();
+            const title = document.getElementById('paperTitle').value;
+            const author = document.getElementById('author').value;
+            const contentHash = document.getElementById('contentHash').value;
+
+            const accounts = await web3.eth.getAccounts();
+            await academicContract.methods.submitPaper(title, author, contentHash).send({ from: accounts[0] });
+            document.getElementById('result').innerText = 'Paper submitted!';
+        };
+
+        document.getElementById('reviewForm').onsubmit = async (event) => {
+            event.preventDefault();
+            const paperId = document.getElementById('paperId').value;
+
+            const accounts = await web3.eth.getAccounts();
+            await academicContract.methods.reviewPaper(paperId).send({ from: accounts[0] });
+            document.getElementById('result').innerText = 'Paper reviewed!';
+        };
+
+        document.getElementById('publishForm').onsubmit = async (event) => {
+            event.preventDefault();
+            const paperId = document.getElementById('publishPaperId').value;
+
+            const accounts = await web3.eth.getAccounts();
+            await academicContract.methods.publishPaper(paperId).send({ from: accounts[0] });
+            document.getElementById('result').innerText = 'Paper published!';
+        };
+    </script>
+</body>
+</html>
