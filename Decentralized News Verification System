@@ -1,0 +1,80 @@
+html
+------------------------------------------------------------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decentralized News Verification System</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Decentralized News Verification System</h1>
+    <form id="newsForm">
+        <input type="text" id="newsUrl" placeholder="Enter news URL" required>
+        <input type="text" id="verifierAddress" placeholder="Enter your address" required>
+        <button type="submit">Verify News</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        const web3 = new Web3(Web3.givenProvider || "http://localhost:8545");
+
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS_HERE';
+        const contractABI = [
+            // Your contract ABI here
+        ];
+
+        const newsContract = new web3.eth.Contract(contractABI, contractAddress);
+
+        document.getElementById('newsForm').onsubmit = async (event) => {
+            event.preventDefault();
+            const newsUrl = document.getElementById('newsUrl').value;
+            const verifierAddress = document.getElementById('verifierAddress').value;
+
+            const accounts = await web3.eth.getAccounts();
+            try {
+                await newsContract.methods.verifyNews(newsUrl).send({ from: accounts[0] });
+                document.getElementById('result').innerText = 'News verification submitted!';
+            } catch (error) {
+                console.error(error);
+                document.getElementById('result').innerText = 'Error verifying news.';
+            }
+        };
+    </script>
+</body>
+</html>
+------------------------------------------
+solidity
+------------------------------------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract NewsVerification {
+    struct News {
+        string url;
+        address verifier;
+        bool isVerified;
+    }
+
+    mapping(string => News) public newsList;
+
+    event NewsVerified(string url, address verifier);
+
+    function verifyNews(string memory _url) public {
+        require(newsList[_url].verifier == address(0), "News already verified.");
+
+        newsList[_url] = News({
+            url: _url,
+            verifier: msg.sender,
+            isVerified: true
+        });
+
+        emit NewsVerified(_url, msg.sender);
+    }
+
+    function getNews(string memory _url) public view returns (string memory, address, bool) {
+        News memory news = newsList[_url];
+        return (news.url, news.verifier, news.isVerified);
+    }
+}
