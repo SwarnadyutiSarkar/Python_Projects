@@ -1,0 +1,120 @@
+Solidity
+---------------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract PetAdoption {
+    struct Pet {
+        uint id;
+        string name;
+        string species;
+        string breed;
+        address owner;
+        bool isAdopted;
+    }
+
+    mapping(uint => Pet) public pets;
+    uint public petsCount;
+
+    event PetAdded(uint id, string name, string species, string breed);
+    event PetAdopted(uint id, address adopter);
+    event PetReturned(uint id);
+
+    function addPet(string memory _name, string memory _species, string memory _breed) public {
+        petsCount++;
+        pets[petsCount] = Pet(petsCount, _name, _species, _breed, msg.sender, false);
+        emit PetAdded(petsCount, _name, _species, _breed);
+    }
+
+    function adoptPet(uint _petId) public {
+        require(_petId > 0 && _petId <= petsCount, "Pet not found");
+        require(!pets[_petId].isAdopted, "Pet already adopted");
+
+        pets[_petId].isAdopted = true;
+        pets[_petId].owner = msg.sender;
+        emit PetAdopted(_petId, msg.sender);
+    }
+
+    function returnPet(uint _petId) public {
+        require(_petId > 0 && _petId <= petsCount, "Pet not found");
+        require(pets[_petId].owner == msg.sender, "You are not the owner");
+
+        pets[_petId].isAdopted = false;
+        pets[_petId].owner = address(0);
+        emit PetReturned(_petId);
+    }
+
+    function getPet(uint _petId) public view returns (Pet memory) {
+        require(_petId > 0 && _petId <= petsCount, "Pet not found");
+        return pets[_petId];
+    }
+}
+-----------------------------------------------
+frontend(html/css)
+-------------------------------------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decentralized Pet Adoption</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Decentralized Pet Adoption Platform</h1>
+    <h2>Add Pet</h2>
+    <input id="petName" placeholder="Name" />
+    <input id="petSpecies" placeholder="Species" />
+    <input id="petBreed" placeholder="Breed" />
+    <button onclick="addPet()">Add Pet</button>
+
+    <h2>Adopt Pet</h2>
+    <input id="petIdToAdopt" placeholder="Pet ID" />
+    <button onclick="adoptPet()">Adopt Pet</button>
+
+    <h2>Return Pet</h2>
+    <input id="petIdToReturn" placeholder="Pet ID" />
+    <button onclick="returnPet()">Return Pet</button>
+
+    <script>
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+        const abi = [ /* ABI goes here */ ];
+        let web3;
+        let contract;
+
+        window.onload = async () => {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                contract = new web3.eth.Contract(abi, contractAddress);
+            }
+        };
+
+        async function addPet() {
+            const name = document.getElementById('petName').value;
+            const species = document.getElementById('petSpecies').value;
+            const breed = document.getElementById('petBreed').value;
+            const accounts = await web3.eth.getAccounts();
+
+            await contract.methods.addPet(name, species, breed).send({ from: accounts[0] });
+            alert('Pet added!');
+        }
+
+        async function adoptPet() {
+            const petId = document.getElementById('petIdToAdopt').value;
+            const accounts = await web3.eth.getAccounts();
+
+            await contract.methods.adoptPet(petId).send({ from: accounts[0] });
+            alert('Pet adopted!');
+        }
+
+        async function returnPet() {
+            const petId = document.getElementById('petIdToReturn').value;
+            const accounts = await web3.eth.getAccounts();
+
+            await contract.methods.returnPet(petId).send({ from: accounts[0] });
+            alert('Pet returned!');
+        }
+    </script>
+</body>
+</html>
