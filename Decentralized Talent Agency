@@ -1,0 +1,113 @@
+HTML/CSS
+------------------------------------------------------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decentralized Talent Agency</title>
+</head>
+<body>
+    <h1>Decentralized Talent Agency</h1>
+    
+    <h2>Add Talent</h2>
+    <input id="talentName" placeholder="Name" />
+    <input id="talentSkills" placeholder="Skills" />
+    <button onclick="addTalent()">Add Talent</button>
+
+    <h2>View Talents</h2>
+    <button onclick="viewTalents()">View Talents</button>
+    <ul id="talentList"></ul>
+
+    <h2>Book Talent</h2>
+    <input id="talentIdToBook" placeholder="Talent ID" />
+    <button onclick="bookTalent()">Book Talent</button>
+
+    <script>
+        const apiUrl = 'http://localhost:3000/talents';
+
+        async function addTalent() {
+            const name = document.getElementById('talentName').value;
+            const skills = document.getElementById('talentSkills').value;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, skills })
+            });
+
+            if (response.ok) {
+                alert('Talent added!');
+                document.getElementById('talentName').value = '';
+                document.getElementById('talentSkills').value = '';
+            }
+        }
+
+        async function viewTalents() {
+            const response = await fetch(apiUrl);
+            const talents = await response.json();
+            const talentList = document.getElementById('talentList');
+            talentList.innerHTML = '';
+
+            talents.forEach(talent => {
+                const li = document.createElement('li');
+                li.textContent = `ID: ${talent.id}, Name: ${talent.name}, Skills: ${talent.skills}, Booked: ${talent.booked}`;
+                talentList.appendChild(li);
+            });
+        }
+
+        async function bookTalent() {
+            const talentId = document.getElementById('talentIdToBook').value;
+
+            const response = await fetch(`${apiUrl}/${talentId}/book`, { method: 'PATCH' });
+
+            if (response.ok) {
+                alert('Talent booked!');
+                document.getElementById('talentIdToBook').value = '';
+            }
+        }
+    </script>
+</body>
+</html>
+---------------------------------------
+SERVER.JS
+-----------------------------------------------
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+
+const app = express();
+const PORT = 3000;
+
+app.use(cors());
+app.use(bodyParser.json());
+
+let talents = [];
+let nextId = 1;
+
+app.post('/talents', (req, res) => {
+    const { name, skills } = req.body;
+    const talent = { id: nextId++, name, skills, booked: false };
+    talents.push(talent);
+    res.status(201).json(talent);
+});
+
+app.get('/talents', (req, res) => {
+    res.json(talents);
+});
+
+app.patch('/talents/:id/book', (req, res) => {
+    const id = parseInt(req.params.id);
+    const talent = talents.find(t => t.id === id);
+
+    if (talent) {
+        talent.booked = true;
+        res.json(talent);
+    } else {
+        res.status(404).send('Talent not found');
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
