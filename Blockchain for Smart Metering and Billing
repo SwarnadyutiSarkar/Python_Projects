@@ -1,0 +1,97 @@
+solidity
+-----------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SmartMeter {
+    struct Meter {
+        address owner;
+        uint256 lastReading;
+        uint256 billingCycleStart;
+        uint256 totalConsumed;
+        uint256 totalBilled;
+    }
+
+    mapping(address => Meter) public meters;
+
+    event MeterRegistered(address indexed owner);
+    event ReadingUpdated(address indexed owner, uint256 newReading);
+    event BillIssued(address indexed owner, uint256 amount);
+    event PaymentReceived(address indexed owner, uint256 amount);
+
+    function registerMeter() public {
+        require(meters[msg.sender].owner == address(0), "Meter already registered");
+        meters[msg.sender] = Meter({
+            owner: msg.sender,
+            lastReading: 0,
+            billingCycleStart: block.timestamp,
+            totalConsumed: 0,
+            totalBilled: 0
+        });
+
+        emit MeterRegistered(msg.sender);
+    }
+
+    function updateReading(uint256 newReading) public {
+        Meter storage meter = meters[msg.sender];
+        require(meter.owner != address(0), "Meter not registered");
+
+        require(newReading > meter.lastReading, "New reading must be higher");
+        
+        uint256 consumption = newReading - meter.lastReading;
+        meter.totalConsumed += consumption;
+        meter.lastReading = newReading;
+
+        emit ReadingUpdated(msg.sender, newReading);
+    }
+
+    function issueBill() public {
+        Meter storage meter = meters[msg.sender];
+        require(meter.owner != address(0), "Meter not registered");
+
+        uint256 amountDue = meter.totalConsumed * 0.1 ether; // Assuming rate is 0.1 ether per unit consumed
+        meter.totalBilled += amountDue;
+
+        emit BillIssued(msg.sender, amountDue);
+    }
+
+    function payBill() public payable {
+        Meter storage meter = meters[msg.sender];
+        require(meter.owner != address(0), "Meter not registered");
+        require(msg.value == meter.totalBilled, "Incorrect payment amount");
+
+        meter.totalBilled = 0; // Reset after payment
+        emit PaymentReceived(msg.sender, msg.value);
+    }
+
+    function getMeterInfo() public view returns (uint256, uint256, uint256) {
+        Meter storage meter = meters[msg.sender];
+        return (meter.lastReading, meter.totalConsumed, meter.totalBilled);
+    }
+}
+-----------------------------
+html js
+----------------------------
+const { ethers } = require("ethers");
+
+async function main() {
+    const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
+    const wallet = new ethers.Wallet("YOUR_PRIVATE_KEY", provider);
+
+    const contractFactory = new ethers.ContractFactory(
+        [
+            // ABI goes here
+        ],
+        "YOUR_COMPILED_BYTECODE",
+        wallet
+    );
+
+    const contract = await contractFactory.deploy();
+    await contract.deployed();
+    console.log("Smart Meter Contract deployed at:", contract.address);
+}
+
+main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+});
