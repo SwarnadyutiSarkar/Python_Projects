@@ -1,0 +1,95 @@
+solidity
+---------------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract IPLicense {
+    struct License {
+        address owner;
+        address licensee;
+        string ipDetails; // Details of the intellectual property
+        uint256 startTime;
+        uint256 duration; // Duration in seconds
+        bool isActive;
+    }
+
+    mapping(uint256 => License) public licenses;
+    uint256 public licenseCount;
+
+    event LicenseCreated(
+        uint256 indexed licenseId,
+        address indexed owner,
+        address indexed licensee,
+        string ipDetails,
+        uint256 startTime,
+        uint256 duration
+    );
+
+    event LicenseTransferred(uint256 indexed licenseId, address indexed newLicensee);
+    
+    function createLicense(
+        address _licensee,
+        string memory _ipDetails,
+        uint256 _duration
+    ) public {
+        licenseCount++;
+        licenses[licenseCount] = License({
+            owner: msg.sender,
+            licensee: _licensee,
+            ipDetails: _ipDetails,
+            startTime: block.timestamp,
+            duration: _duration,
+            isActive: true
+        });
+
+        emit LicenseCreated(licenseCount, msg.sender, _licensee, _ipDetails, block.timestamp, _duration);
+    }
+
+    function transferLicense(uint256 _licenseId, address _newLicensee) public {
+        License storage license = licenses[_licenseId];
+        require(msg.sender == license.owner, "Only the owner can transfer the license");
+        require(license.isActive, "License is not active");
+        license.licensee = _newLicensee;
+
+        emit LicenseTransferred(_licenseId, _newLicensee);
+    }
+
+    function checkLicenseValidity(uint256 _licenseId) public view returns (bool) {
+        License storage license = licenses[_licenseId];
+        return license.isActive && (block.timestamp <= (license.startTime + license.duration));
+    }
+
+    function revokeLicense(uint256 _licenseId) public {
+        License storage license = licenses[_licenseId];
+        require(msg.sender == license.owner, "Only the owner can revoke the license");
+        license.isActive = false;
+    }
+}
+--------------------------------
+js
+-------------------
+const { ethers } = require("ethers");
+
+async function main() {
+    // Connect to the Ethereum network
+    const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
+    const wallet = new ethers.Wallet("YOUR_PRIVATE_KEY", provider);
+
+    // Compile and deploy the smart contract
+    const contractFactory = new ethers.ContractFactory(
+        [
+            // ABI goes here
+        ],
+        "YOUR_COMPILED_BYTECODE",
+        wallet
+    );
+
+    const contract = await contractFactory.deploy();
+    await contract.deployed();
+    console.log("Contract deployed at:", contract.address);
+}
+
+main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+});
