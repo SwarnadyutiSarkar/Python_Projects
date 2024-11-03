@@ -1,0 +1,30 @@
+from flask import Flask, send_from_directory, request
+import os
+
+app = Flask(__name__)
+
+# Directory where your static files are stored
+STATIC_FILES_DIR = 'static'
+
+@app.route('/<path:filename>', methods=['GET'])
+def serve_file(filename):
+    # Check if the file exists in the static directory
+    if os.path.exists(os.path.join(STATIC_FILES_DIR, filename)):
+        return send_from_directory(STATIC_FILES_DIR, filename)
+    else:
+        return "File not found", 404
+
+@app.route('/cache', methods=['POST'])
+def cache_file():
+    # Assuming file is uploaded via POST request
+    file = request.files['file']
+    if file:
+        file_path = os.path.join(STATIC_FILES_DIR, file.filename)
+        file.save(file_path)
+        return "File cached", 201
+    return "No file uploaded", 400
+
+if __name__ == '__main__':
+    # Ensure the static directory exists
+    os.makedirs(STATIC_FILES_DIR, exist_ok=True)
+    app.run(host='0.0.0.0', port=5000)
