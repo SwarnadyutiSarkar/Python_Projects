@@ -1,0 +1,91 @@
+Solidity
+-----------------------------------------
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DigitalCertificates {
+    struct Certificate {
+        string name;
+        string issuedTo;
+        string date;
+        string metadataURI; // Link to more information (e.g., badge image)
+        bool exists;
+    }
+
+    mapping(uint256 => Certificate) public certificates;
+    uint256 public certificateCount;
+
+    event CertificateIssued(uint256 indexed certificateId, string issuedTo);
+
+    function issueCertificate(string memory _name, string memory _issuedTo, string memory _date, string memory _metadataURI) public {
+        certificateCount++;
+        certificates[certificateCount] = Certificate(_name, _issuedTo, _date, _metadataURI, true);
+        emit CertificateIssued(certificateCount, _issuedTo);
+    }
+
+    function getCertificate(uint256 _id) public view returns (string memory, string memory, string memory, string memory) {
+        require(certificates[_id].exists, "Certificate does not exist.");
+        Certificate memory cert = certificates[_id];
+        return (cert.name, cert.issuedTo, cert.date, cert.metadataURI);
+    }
+}
+-----------------------------------------------
+HTML
+-----------------------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Certificates</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Issue Digital Certificate</h1>
+    <input type="text" id="name" placeholder="Certificate Name">
+    <input type="text" id="issuedTo" placeholder="Issued To">
+    <input type="text" id="date" placeholder="Date">
+    <input type="text" id="metadataURI" placeholder="Metadata URI">
+    <button onclick="issueCertificate()">Issue Certificate</button>
+
+    <h2>Get Certificate</h2>
+    <input type="number" id="certId" placeholder="Certificate ID">
+    <button onclick="getCertificate()">Get Certificate</button>
+    <pre id="certificateDetails"></pre>
+
+    <script>
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+        const abi = [ /* ABI generated after deploying the contract */ ];
+
+        let web3;
+        let contract;
+
+        window.onload = async () => {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                contract = new web3.eth.Contract(abi, contractAddress);
+            } else {
+                alert('Please install MetaMask!');
+            }
+        };
+
+        async function issueCertificate() {
+            const accounts = await web3.eth.getAccounts();
+            const name = document.getElementById('name').value;
+            const issuedTo = document.getElementById('issuedTo').value;
+            const date = document.getElementById('date').value;
+            const metadataURI = document.getElementById('metadataURI').value;
+
+            await contract.methods.issueCertificate(name, issuedTo, date, metadataURI).send({ from: accounts[0] });
+            alert('Certificate issued successfully!');
+        }
+
+        async function getCertificate() {
+            const certId = document.getElementById('certId').value;
+            const result = await contract.methods.getCertificate(certId).call();
+            document.getElementById('certificateDetails').innerText = `Name: ${result[0]}, Issued To: ${result[1]}, Date: ${result[2]}, Metadata: ${result[3]}`;
+        }
+    </script>
+</body>
+</html>
