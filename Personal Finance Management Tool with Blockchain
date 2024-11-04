@@ -1,0 +1,94 @@
+// File: index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Management Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Personal Finance Management Tool</h1>
+    <form id="expenseForm">
+        <input type="text" id="description" placeholder="Description" required>
+        <input type="number" id="amount" placeholder="Amount" required>
+        <button type="submit">Add Expense</button>
+    </form>
+    <ul id="expenseList"></ul>
+
+    <script>
+        let web3;
+        let contract;
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+        const abi = [/* Your Contract ABI */];
+
+        async function init() {
+            if (typeof window.ethereum !== 'undefined') {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                contract = new web3.eth.Contract(abi, contractAddress);
+                loadExpenses();
+            } else {
+                alert('Please install MetaMask to use this app');
+            }
+        }
+
+        async function loadExpenses() {
+            const expenses = await contract.methods.getExpenses().call();
+            const expenseList = document.getElementById('expenseList');
+            expenseList.innerHTML = '';
+            expenses.forEach(expense => {
+                const li = document.createElement('li');
+                li.textContent = `${expense.description} - ${web3.utils.fromWei(expense.amount, 'ether')} ETH`;
+                expenseList.appendChild(li);
+            });
+        }
+
+        document.getElementById('expenseForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const description = document.getElementById('description').value;
+            const amount = web3.utils.toWei(document.getElementById('amount').value, 'ether');
+            const accounts = await web3.eth.getAccounts();
+            await contract.methods.addExpense(description, amount).send({ from: accounts[0] });
+            document.getElementById('expenseForm').reset();
+            loadExpenses();
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>
+
+// File: contract.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract PersonalFinance {
+    struct Expense {
+        string description;
+        uint amount;
+    }
+
+    Expense[] public expenses;
+
+    function addExpense(string memory _description, uint _amount) public {
+        expenses.push(Expense(_description, _amount));
+    }
+
+    function getExpenses() public view returns (Expense[] memory) {
+        return expenses;
+    }
+}
+
+// File: server.js
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+app.listen(3000, () => {
+    console.log('Server running on http://localhost:3000');
+});
